@@ -137,3 +137,30 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+
+
+
+
+
+
+# Env
+.env
+.env.*.local
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+ios/Pods/
+android/.gradle/
+android/local.properties
+
+# Logs
+*.log
+
+# OS/Editors
+.DS_Store
+.vscode/
+.idea/
