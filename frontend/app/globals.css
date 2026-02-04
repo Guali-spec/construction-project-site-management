@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html { @apply antialiased; }
+  body { @apply bg-slate-50 text-slate-800; }
+  input:focus, button:focus-visible, a:focus-visible {
+    @apply outline-none ring-2 ring-amber-500/40 ring-offset-2;
+  }
+}
