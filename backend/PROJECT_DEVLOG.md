@@ -240,3 +240,378 @@ PostgreSQL est disponible en local via Docker, prêt à être connecté à Prism
 - Installer Prisma
 - Initialiser prisma/schema.prisma
 - Créer la première migration
+
+
+(## ⚠️ Ajustement : conflit de port PostgreSQL
+
+**Constat :**
+Le container `cpsm_postgres` n’exposait pas de port sur l’hôte (`5432/tcp` seulement).
+De plus, un autre projet utilisait déjà le port 5432 sur la machine.
+
+**Décision :**
+Mapper PostgreSQL sur un port hôte dédié au projet pour éviter les conflits.
+
+**Changement :**
+- Passage du mapping de port à `5434:5432` dans `docker-compose.yml`.
+
+**Commandes :**
+- docker compose down
+- docker compose up -d
+- docker ps
+
+**Résultat attendu :**
+PostgreSQL accessible via `localhost:5434`.
+)
+
+(
+    ## 🔎 Diagnostic : container Postgres du projet absent
+
+**Constat :**
+Après redémarrage, le container `cpsm_postgres` n’apparaissait plus dans `docker ps`
+(uniquement `unipilot_postgres` et `epharm_db` visibles).
+
+**Hypothèse :**
+- container stoppé
+- ou problème de démarrage lié à la configuration docker-compose
+- ou commande exécutée en dehors du dossier contenant docker-compose.yml
+
+**Actions de diagnostic :**
+- docker ps -a
+- docker compose up -d (depuis la racine du repo)
+- docker compose logs --tail 50 db (si nécessaire)
+
+**Résultat attendu :**
+`cpsm_postgres` relancé et exposé sur `0.0.0.0:5434->5432/tcp`.
+
+)
+
+---
+
+### [2026-02-06] Session — Installation et initialisation de Prisma
+
+**Objectif de la session :**
+Préparer l’ORM Prisma pour connecter NestJS à PostgreSQL et gérer les migrations.
+
+---
+
+## 📌 Contexte
+
+Le cahier des charges prévoit une base relationnelle (PostgreSQL) et un ORM pour :
+- typage TypeScript
+- migrations versionnées
+- accès DB maintenable
+
+Choix : Prisma (simple, moderne, très adapté à NestJS).
+
+---
+
+## 🛠 Actions réalisées
+
+### 1️⃣ Configuration de la connexion DB
+
+**Fichiers :**
+- `backend/.env` (local, non versionné)
+- `backend/.env.example` (modèle partagé)
+
+**DATABASE_URL :**
+postgresql://postgres:admin123@localhost:5434/cpsm_dev?schema=public
+
+**Raison :**
+- Port 5434 utilisé pour éviter conflit avec d’autres projets (5432 déjà occupé).
+
+---
+
+### 2️⃣ Installation Prisma
+
+**Commandes :**
+- npm install prisma --save-dev
+- npm install @prisma/client
+
+**Rôle :**
+- prisma = CLI migrations + génération
+- prisma client = requêtes DB dans le code
+
+---
+
+### 3️⃣ Initialisation Prisma
+
+**Commande :**
+- npx prisma init
+
+**Fichiers générés :**
+- `backend/prisma/schema.prisma`
+
+---
+
+### 4️⃣ Test de connexion
+
+**Commande :**
+- npx prisma db push
+
+**But :**
+Vérifier que Prisma se connecte à PostgreSQL via DATABASE_URL.
+
+---
+
+## 🧠 Concepts appris / compris
+
+- ORM = couche entre code et DB
+- Prisma schema = description officielle des modèles
+- Prisma Client = API typée pour requêtes
+- Migrations = historique versionné des changements DB
+- .env (local) ≠ .env.example (partage équipe)
+
+---
+
+## ✅ Résultat de la session
+
+Prisma est prêt et connecté à PostgreSQL.
+Le projet peut maintenant démarrer la modélisation du schéma DB.
+
+---
+
+## 🚀 Prochaines étapes
+
+- Définir les modèles Prisma (users, projects, tasks, etc.)
+- Générer la première migration
+- Ajouter un module Prisma dans NestJS (PrismaService)
+
+---
+
+### [2026-02-06] Session — Modélisation DB (Core) + première migration
+
+**Objectif de la session :**
+Définir le noyau de la base de données : utilisateurs, chantiers, accès par chantier, audit trail.
+
+---
+
+## 📌 Contexte
+
+Le cahier des charges définit :
+- des rôles utilisateurs avec permissions :contentReference[oaicite:5]{index=5}
+- une base relationnelle avec tables users, projects, project_members, activity_logs :contentReference[oaicite:6]{index=6}
+- la traçabilité complète des actions (audit trail)
+
+---
+
+## 🛠 Actions réalisées
+
+### 1️⃣ Mise à jour du schéma Prisma
+
+**Fichier modifié :**
+- `backend/prisma/schema.prisma`
+
+**Modèles ajoutés :**
+- User
+- Project
+- ProjectMember
+- ActivityLog
+
+**Enums ajoutés :**
+- GlobalRole (RBAC global)
+- ProjectStatus
+- ProjectMemberRole
+
+---
+
+### 2️⃣ Décisions de conception
+
+- Séparation “rôle global” vs “rôle par chantier” :
+  - GlobalRole = droits généraux (admin, comptable, etc.)
+  - ProjectMemberRole = droits spécifiques dans un chantier
+- Ajout ActivityLog dès le début pour garantir l’audit trail
+
+---
+
+### 3️⃣ Première migration
+
+**Commande :**
+- npx prisma migrate dev --name init_core
+
+**Résultat :**
+- Création d’une migration versionnée dans `prisma/migrations/`
+- Tables créées dans la DB de dev
+
+---
+
+### 4️⃣ Vérification visuelle
+
+**Commande :**
+- npx prisma studio
+
+Tables visibles :
+- users
+- projects
+- project_members
+- activity_logs
+
+---
+
+## 🧠 Concepts appris / compris
+
+- Une migration Prisma = historique versionné des changements DB
+- Un modèle Prisma = table SQL + contraintes + relations
+- Un enum Prisma = type contrôlé côté DB/client
+- ProjectMember gère l’accès aux chantiers (multi-projets)
+
+---
+
+## ✅ Résultat de la session
+
+La base DB possède un noyau robuste : gestion des utilisateurs, des chantiers, des accès, et des logs.
+
+---
+
+## 🚀 Prochaines étapes
+
+- Ajouter le “PrismaModule” dans NestJS (PrismaService)
+- Implémenter Auth (register/login + hash bcrypt + JWT)
+- Mettre en place RBAC (guards)
+
+## 🧩 Fix Prisma v7 — erreur P1012 (datasource url)
+
+**Erreur rencontrée :**
+P1012 — `The datasource property url is no longer supported in schema files`
+avec Prisma CLI 7.3.0.
+
+**Cause :**
+Prisma v7 déplace la configuration de connexion DB hors du `schema.prisma`
+vers `prisma.config.ts`.
+
+**Correction appliquée :**
+- Suppression de `url = env("DATABASE_URL")` dans `prisma/schema.prisma`
+- Ajout/Correction de `prisma.config.ts` pour définir :
+  - schema path
+  - migrations path
+  - datasource url via `process.env.DATABASE_URL`
+
+**Commandes :**
+- npx prisma migrate dev --name init_core (après correction)
+
+**Résultat attendu :**
+La migration s’exécute sans erreur et génère `prisma/migrations/...`.
+
+## 🧩 Fix Prisma v7 — datasource.url manquant (migrate dev)
+
+**Erreur rencontrée :**
+`The datasource.url property is required in your Prisma config file when using prisma migrate dev.`
+
+**Cause probable :**
+`process.env.DATABASE_URL` non chargé au moment de l’exécution de Prisma CLI (Windows/PowerShell).
+Donc `datasource.url` devient undefined.
+
+**Correction appliquée :**
+- Installation de dotenv
+- Chargement explicite de `.env` dans `prisma.config.ts` via `import "dotenv/config";`
+- `datasource.url` défini avec `process.env.DATABASE_URL`
+
+**Commandes :**
+- npm install dotenv
+- npx prisma migrate dev --name init_core
+
+
+---
+
+### [2026-02-06] Session — Prisma v7 + Core schema + première migration (OK)
+
+**Objectif de la session :**
+Mettre en place Prisma v7 de façon compatible, définir le schéma DB core et générer la première migration.
+
+---
+
+## 🛠 Actions réalisées
+
+### 1️⃣ Connexion Prisma ↔ PostgreSQL validée
+**Commande :**
+- npx prisma db push
+
+**Résultat :**
+Connexion OK à `cpsm_dev` sur `localhost:5434`.
+
+---
+
+### 2️⃣ Problème Prisma v7 : url dans schema.prisma (P1012)
+**Erreur :**
+P1012 — `The datasource property url is no longer supported in schema files`
+
+**Cause :**
+Prisma v7 déplace la connexion DB vers `prisma.config.ts`.
+
+**Fix :**
+- datasource dans `schema.prisma` sans `url`
+- configuration datasource via `prisma.config.ts`
+
+---
+
+### 3️⃣ Problème Prisma v7 : datasource.url requis (migrate dev)
+**Erreur :**
+`The datasource.url property is required in your Prisma config file...`
+
+**Cause :**
+`process.env.DATABASE_URL` non chargé au runtime Prisma CLI (Windows/PowerShell).
+
+**Fix :**
+- Installation dotenv
+- Chargement explicite de `.env` via `import "dotenv/config"` dans `prisma.config.ts`
+
+**Commandes :**
+- npm install dotenv
+- npx prisma migrate dev --name init_core
+
+---
+
+### 4️⃣ Schéma DB Core (v1)
+**Fichier modifié :**
+- prisma/schema.prisma
+
+**Modèles ajoutés :**
+- User
+- Project
+- ProjectMember
+- ActivityLog
+
+**Enums ajoutés :**
+- GlobalRole (rôles globaux)
+- ProjectStatus
+- ProjectMemberRole
+
+**Décisions :**
+- Séparer rôle global (User.role) et rôle par chantier (ProjectMember.role)
+- Ajouter ActivityLog dès le début pour audit trail / traçabilité
+
+---
+
+### 5️⃣ Première migration versionnée
+**Commande :**
+- npx prisma migrate dev --name init_core
+
+**Résultat :**
+Migration créée et appliquée :
+- prisma/migrations/20260206010427_init_core/migration.sql
+
+---
+
+## 🧠 Concepts appris / compris
+
+- Prisma v7 utilise `prisma.config.ts` pour la connexion DB
+- `.env` doit être chargé explicitement selon le contexte d’exécution
+- `migrate dev` = crée + applique la migration + met à jour Prisma Client
+- Une migration = historique versionné de la base (source officielle des changements)
+- Le “core schema” doit être stable car tout le reste dépend des accès/chantiers/utilisateurs
+
+---
+
+## ✅ Résultat de la session
+
+- Prisma opérationnel (v7) + PostgreSQL OK
+- DB core créée + migration appliquée
+- Base prête pour intégration dans NestJS via PrismaService
+
+---
+
+## 🚀 Prochaines étapes
+
+- Créer PrismaModule / PrismaService dans NestJS
+- Ajouter health check endpoint DB
+- Ensuite : Auth (bcrypt + JWT + refresh) + RBAC guards
+
