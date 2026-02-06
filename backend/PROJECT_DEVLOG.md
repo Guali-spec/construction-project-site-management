@@ -164,3 +164,79 @@ Base saine prête pour intégration PostgreSQL + Prisma.
 - Configurer la variable DATABASE_URL
 - Installer Prisma
 - Créer le premier schéma de base de données
+
+
+---
+
+### [2026-02-05] Session — Mise en place PostgreSQL avec Docker
+
+**Objectif de la session :**
+Lancer une base PostgreSQL locale reproductible avec Docker pour le développement backend.
+
+---
+
+## 📌 Contexte
+
+Le projet nécessite une base relationnelle robuste (PostgreSQL recommandé).
+Docker permet à toute l’équipe d’avoir la même DB, sans installation manuelle complexe.
+
+---
+
+## 🛠 Actions réalisées
+
+### 1️⃣ Création du fichier docker-compose.yml
+
+**Fichier créé :**
+- `docker-compose.yml`
+
+**Rôle :**
+Définir un service PostgreSQL local avec :
+- un utilisateur (`postgres`)
+- un mot de passe (`admin123`)
+- une base de dev (`cpsm_dev`)
+- un volume persistant (`cpsm_pgdata`)
+
+---
+
+### 2️⃣ Lancement de PostgreSQL
+
+**Commandes exécutées :**
+- docker compose up -d
+- docker ps
+
+**Résultat attendu :**
+Le container `cpsm_postgres` apparaît comme “Up”.
+
+---
+
+### 3️⃣ Test de connexion (si effectué)
+
+**Commande :**
+- docker exec -it cpsm_postgres psql -U postgres -d cpsm_dev
+
+**Test SQL :**
+- SELECT version();
+
+---
+
+## 🧠 Concepts appris / compris
+
+- Un container = une application isolée (ici PostgreSQL)
+- docker-compose = fichier de configuration pour démarrer plusieurs services
+- volume = stockage persistant des données DB
+- port 5432 = port standard PostgreSQL
+
+---
+
+## ✅ Résultat de la session
+
+PostgreSQL est disponible en local via Docker, prêt à être connecté à Prisma.
+
+---
+
+## 🚀 Prochaines étapes
+
+- Ajouter DATABASE_URL côté backend
+- Installer Prisma
+- Initialiser prisma/schema.prisma
+- Créer la première migration
