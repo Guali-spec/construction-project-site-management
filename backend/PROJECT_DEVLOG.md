@@ -615,3 +615,558 @@ Migration créée et appliquée :
 - Ajouter health check endpoint DB
 - Ensuite : Auth (bcrypt + JWT + refresh) + RBAC guards
 
+
+### [2026-02-06] Session — Intégration Prisma v7 dans NestJS (Debug avancé + résolution complète)
+
+**Objectif de la session :**
+Intégrer Prisma v7 au backend NestJS, connecter PostgreSQL proprement et résoudre les erreurs liées aux changements majeurs de Prisma v7.
+
+---
+
+## 📌 Contexte
+
+- PostgreSQL fonctionne via Docker (port 5434).
+- Migration `init_core` créée et appliquée avec succès.
+- Prisma CLI fonctionne correctement.
+- L’objectif était d’intégrer Prisma dans NestJS via PrismaService.
+
+---
+
+# 🧩 Problèmes rencontrés et résolutions
+
+---
+
+## 1️⃣ Erreur TypeScript — Promise<string> vs string
+
+**Erreur :**
+Type 'Promise<string>' is not assignable to type 'string'.
+
+**Cause :**
+Le service `getHello()` est devenu `async` car il exécute une requête DB.
+
+**Correction :**
+Le controller a été modifié pour utiliser :
+
+```ts
+async getHello(): Promise<string>
+2️⃣ PrismaClient non reconnu (TS2305)
+Erreur :
+Module '@prisma/client' has no exported member 'PrismaClient'.
+
+Cause :
+Prisma Client non généré correctement après migration.
+
+Correction :
+
+npx prisma generate
+
+Vérification de la cohérence des dépendances
+
+3️⃣ Erreur P1012 — url non supportée dans schema.prisma
+Erreur :
+The datasource property url is no longer supported in schema files.
+
+Cause :
+Prisma v7 déplace la configuration de connexion vers prisma.config.ts.
+
+Correction :
+
+Suppression de url = env("DATABASE_URL") dans schema.prisma
+
+Configuration datasource via prisma.config.ts
+
+4️⃣ datasource.url requis (migrate dev)
+Erreur :
+The datasource.url property is required in your Prisma config file.
+
+Cause :
+process.env.DATABASE_URL non chargé automatiquement.
+
+Correction :
+
+Installation dotenv
+
+Chargement explicite via import "dotenv/config" dans prisma.config.ts
+
+5️⃣ PrismaClientInitializationError — options requises
+Erreur :
+PrismaClient needs to be constructed with a non-empty PrismaClientOptions.
+
+Cause :
+Avec Prisma v7 + prisma.config.ts, new PrismaClient() sans options n’est plus accepté.
+
+Tentatives rejetées par TypeScript :
+
+datasources
+
+datasourceUrl
+
+🚀 Solution finale adoptée — Driver Adapter Prisma v7
+Prisma v7 exige l’utilisation d’un adapter pour les connexions directes à la base.
+
+📦 Installation
+npm install pg @prisma/adapter-pg
+🛠 PrismaService mis à jour
+import {
+  Injectable,
+  OnApplicationShutdown,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+
+@Injectable()
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy, OnApplicationShutdown
+{
+  constructor() {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is missing.");
+    }
+
+    const pool = new Pool({ connectionString });
+    const adapter = new PrismaPg(pool);
+
+    super({ adapter });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+
+  async onApplicationShutdown() {
+    await this.$disconnect();
+  }
+}
+🔐 Chargement des variables d’environnement
+Installation :
+
+npm install @nestjs/config
+Ajout dans AppModule :
+
+ConfigModule.forRoot({
+  isGlobal: true,
+  envFilePath: ".env",
+}),
+🧠 Concepts importants appris
+Prisma v7 introduit les Driver Adapters
+
+prisma.config.ts remplace la configuration de datasource dans schema.prisma
+
+NestJS ne charge pas .env automatiquement
+
+Un ORM moderne évolue fortement entre versions
+
+Toujours lire les messages d’erreur attentivement
+
+Adapter > datasources pour Prisma v7 direct DB
+
+Migration versionnée = source officielle de vérité DB
+
+✅ Résultat final
+NestJS démarre sans erreur
+
+Prisma connecté via adapter Postgres
+
+Endpoint / retourne :
+
+API OK — users count: 0
+Base de données opérationnelle
+
+Architecture backend stable
+
+🚀 Prochaines étapes
+Implémenter Auth (Register + Login)
+
+Hash mot de passe (bcrypt)
+
+JWT access token
+
+Refresh token
+
+RBAC (guards NestJS)
+
+
+---
+
+🔥 Ce bloc montre un vrai niveau d’ingénierie.
+
+---
+
+Maintenant on peut passer à la suite :
+
+# 🔐 Auth System (Register + Login + JWT + Refresh)
+
+Prochaine question pour toi :
+
+👉 Tu veux d’abord :
+1. Mettre en place uniquement Register + Login simple ?
+2. Ou directement un système complet avec refresh tokens et rotation ?
+
+Dis-moi et on attaque.
+
+
+---
+
+### [2026-02-06] Session — Auth v1 (setup complet) + Refresh Tokens (DB)
+
+**Objectif :**
+Démarrer un système d’auth complet : JWT access + refresh token avec rotation et stockage sécurisé côté DB.
+
+---
+
+## 🛠 Actions réalisées
+
+### 1) Dépendances Auth
+**Commandes :**
+- npm install @nestjs/jwt @nestjs/passport passport passport-jwt bcrypt
+- npm install -D @types/bcrypt @types/passport-jwt
+
+**But :**
+- JWT (sign/verify tokens)
+- Passport JWT (auth guard standard NestJS)
+- bcrypt (hash password + hash refresh token)
+
+---
+
+### 2) Configuration .env
+**Fichiers :**
+- backend/.env (local)
+- backend/.env.example (partagé)
+
+**Variables ajoutées :**
+- JWT_ACCESS_SECRET
+- JWT_REFRESH_SECRET
+- JWT_ACCESS_EXPIRES_IN=15m
+- JWT_REFRESH_EXPIRES_IN=7d
+
+---
+
+### 3) Modèle DB Refresh Token (rotation)
+**Fichier modifié :**
+- prisma/schema.prisma
+
+**Table ajoutée :**
+- refresh_tokens
+
+**Champs clés :**
+- tokenHash (stockage hashé du refresh token, jamais en clair)
+- jti (identifiant unique du token)
+- expiresAt / revokedAt
+- replacedBy (rotation : lien vers le nouveau token)
+
+**Relation :**
+- User.refreshTokens (1 user -> n tokens)
+
+---
+
+### 4) Migration
+**Commandes :**
+- npx prisma migrate dev --name add_refresh_tokens
+- npx prisma generate
+
+**Résultat :**
+- migration SQL créée/appliquée
+- Prisma Client mis à jour
+
+---
+
+### 5) Structure NestJS Auth
+**Commandes :**
+- npx nest g module auth
+- npx nest g service auth
+- npx nest g controller auth
+
+**Résultat :**
+Module auth prêt pour implémenter Register/Login/Refresh.
+
+---
+
+## ✅ Résultat de la session
+- Dépendances installées
+- Variables JWT en place
+- Table refresh_tokens en DB (prête pour rotation)
+- Auth module scaffold créé
+
+---
+
+## 🚀 Prochaines étapes
+- Implémenter Register + Login
+- Générer access token + refresh token
+- Stocker refresh token hashé (DB)
+- Implémenter endpoint /auth/refresh avec rotation
+- Implémenter /auth/logout (révocation)
+
+## 🧩 Fix Prisma schema — erreur P1012 (relation mal écrite)
+
+**Erreur :**
+P1012 — ligne non valide dans schema.prisma (tentative de mettre `refreshTokens RefreshToken[]` dans `@relation(...)`).
+
+**Cause :**
+En Prisma, une relation "liste" (1→N) se déclare comme un **champ séparé** dans le modèle parent (User),
+pas dans les paramètres `@relation()` du modèle enfant.
+
+**Correction :**
+- `RefreshToken.user` conserve uniquement :
+  `@relation(fields: [userId], references: [id], onDelete: Cascade)`
+- Ajout du champ :
+  `User.refreshTokens RefreshToken[]`
+
+**Commandes :**
+- npx prisma migrate dev --name add_refresh_tokens
+- npx prisma generate
+
+---
+
+### [2026-02-06] Session — Auth complet (JWT Access + Refresh rotation + révocation)
+
+**Objectif :**
+Implémenter un système d’auth complet :
+- access token (court)
+- refresh token (long) stocké hashé en DB
+- rotation à chaque refresh
+- anti-reuse (révocation de session si token suspect)
+
+---
+
+## 🛠 Actions réalisées
+
+### 1) Installation dépendances
+- @nestjs/jwt, passport, passport-jwt
+- bcrypt (+ types)
+- uuid (+ types)
+- @nestjs/config (env)
+
+---
+
+### 2) Configuration environnement
+Ajout variables :
+- JWT_ACCESS_SECRET
+- JWT_REFRESH_SECRET
+- JWT_ACCESS_EXPIRES_IN=15m
+- JWT_REFRESH_EXPIRES_IN=7d
+
+---
+
+### 3) Validation globale DTO
+Ajout ValidationPipe global (whitelist + forbidNonWhitelisted + transform).
+
+---
+
+### 4) Auth Module
+Création :
+- AuthModule (JwtModule)
+- AuthService (register/login/refresh/logout)
+- AuthController (routes /auth/*)
+- DTOs (RegisterDto, LoginDto, RefreshDto)
+
+---
+
+### 5) Stratégie Refresh Token (DB)
+Principe :
+- Génération refresh token signé (incluant jti)
+- Stockage en DB : tokenHash (bcrypt) + jti + expiresAt
+- Rotation : à chaque refresh, l’ancien est marqué revokedAt et replacedBy pointe vers le nouveau
+- Anti-reuse : si mismatch tokenHash → révocation de tous les refresh actifs de l’utilisateur
+
+---
+
+## ✅ Résultat
+- /auth/register retourne accessToken + refreshToken
+- /auth/login retourne accessToken + refreshToken
+- /auth/refresh retourne de nouveaux tokens et révoque l’ancien refresh
+- /auth/logout révoque le refresh token fourni
+
+
+🚀 Prochaines étapes
+- Ajouter JWT access guard (routes protégées)
+- Ajouter endpoint /auth/me
+- Ajouter RBAC (roles + guards)
+- Ajouter cookies httpOnly (option sécurité front)
+
+## 🧩 Fix Auth — class-validator manquant + types JWT expiresIn
+
+**Problèmes :**
+1) DTOs cassés : `Cannot find module 'class-validator'`
+2) Types JWT : `expiresIn` (env string) non compatible avec le type attendu par jsonwebtoken.
+
+**Corrections :**
+- Installation :
+  - npm install class-validator class-transformer
+- Typage `expiresIn` :
+  - import de `SignOptions` depuis `jsonwebtoken`
+  - cast de `process.env.JWT_*_EXPIRES_IN` en `SignOptions["expiresIn"]`
+
+**Résultat attendu :**
+Compilation OK et AuthService capable de signer access/refresh tokens.
+
+
+## 🧩 Fix Auth — calcul expiresAt refresh token (TypeScript)
+
+**Problème :**
+`expiresIn` est typé `number | StringValue | undefined`, donc impossible d’utiliser `.endsWith()` / `.replace()` de façon sûre.
+
+**Correction :**
+- Ajout d’une variable dédiée : `REFRESH_TOKEN_DAYS=7`
+- Calcul de `expiresAt` en DB basé sur REFRESH_TOKEN_DAYS (parseInt + fallback)
+- Conservation de `JWT_REFRESH_EXPIRES_IN="7d"` uniquement pour l’expiration JWT.
+
+
+---
+
+### [2026-02-06] Session — Refresh rotation validée + JWT Guard + /auth/me
+
+**Objectif :**
+Valider la rotation des refresh tokens et protéger des routes via access token JWT.
+
+---
+
+## ✅ Tests effectués
+
+### 1) Rotation refresh token
+- Appel POST /auth/refresh avec un refresh token valide
+- Résultat : nouveaux access/refresh tokens reçus
+- DB : ancien refresh token marqué revokedAt + replacedBy renseigné
+
+### 2) Anti-reuse (sécurité)
+- Tentative d’utiliser un ancien refresh token après rotation
+- Résultat attendu : 401 + révocation des refresh tokens actifs de l’utilisateur (protection contre vol/reuse)
+
+---
+
+## 🛠 Implémentation JWT Access Guard
+
+### Fichiers créés
+- src/auth/strategies/jwt.strategy.ts
+- src/auth/guards/jwt-auth.guard.ts
+
+### AuthModule
+- Ajout de JwtStrategy dans providers
+
+### Endpoint ajouté
+- GET /auth/me (protégé par JwtAuthGuard)
+- Retourne req.user (payload JWT validé)
+
+---
+
+## ✅ Résultat
+- Refresh rotation fonctionnelle
+- Détection anti-reuse fonctionnelle
+- Route protégée /auth/me opérationnelle avec Bearer access token
+
+---
+
+## 🚀 Prochaines étapes
+- RBAC : decorator @Roles + RolesGuard
+- Permissions par chantier (ProjectMemberRole)
+- Ajout ActivityLog automatique (interceptor)
+
+
+---
+
+### [2026-02-06] Session — RBAC (RolesGuard + @Roles)
+
+**Objectif :**
+Ajouter un système de contrôle d’accès basé sur les rôles globaux.
+
+---
+
+## 🛠 Implémentation
+
+### 1) Decorator @Roles
+- Création du decorator utilisant SetMetadata
+
+### 2) RolesGuard
+- Lecture des rôles requis via Reflector
+- Comparaison avec req.user.role
+
+### 3) Activation globale
+- Ajout RolesGuard comme APP_GUARD
+
+### 4) Test
+- Route protégée avec @Roles("SUPER_ADMIN")
+- Vérification 403 si rôle non autorisé
+
+---
+
+## ✅ Résultat
+- Routes protégées par rôle global
+- RBAC global fonctionnel
+
+---
+
+## 🚀 Prochaines étapes
+- Permissions par chantier (ProjectMemberRole)
+- Module Projects
+- ActivityLog automatique via interceptor
+
+---
+
+### [2026-02-06] Session — Swagger (OpenAPI) pour documenter l’API
+
+**Objectif :**
+Mettre en place Swagger pour documenter l’API et stabiliser le contrat entre backend, web et mobile.
+
+**Commandes :**
+- npm install @nestjs/swagger swagger-ui-express
+
+**Changements :**
+- Ajout SwaggerModule dans main.ts
+- URL de documentation : /docs
+- Ajout BearerAuth dans la doc pour tester les routes protégées
+
+**Résultat :**
+Swagger UI accessible sur http://localhost:3000/docs
+
+**Prochaines étapes :**
+- Démarrer le module Projects (CRUD chantier)
+- Ajouter validation DTO + RBAC/permissions sur les routes Projects
+
+---
+
+### [2026-02-06] Session — Projects (CRUD) + accès par membership
+
+**Objectif :**
+Implémenter le module Projects avec un contrôle d’accès basé sur l’appartenance au chantier (ProjectMember).
+
+---
+
+## 🛠 Implémentation
+
+### DTOs
+- CreateProjectDto (name obligatoire, description/location optionnels)
+- UpdateProjectDto (champs optionnels)
+
+### Routes (JWT obligatoire)
+- POST /projects : créer un chantier + créer membership (OWNER) pour le créateur
+- GET /projects : liste des chantiers où l’utilisateur est membre
+- GET /projects/:id : détail si membre
+- PATCH /projects/:id : modif autorisée si role=OWNER/MANAGER
+- DELETE /projects/:id : archive (status=ARCHIVED) si role=OWNER/MANAGER
+
+### Logique d’accès
+- Un user ne peut voir que ses projets (membership)
+- Update/Archive bloqués si rôle insuffisant
+
+---
+
+## ✅ Tests
+- Swagger /docs avec Bearer access token
+- Création + listing OK
+- Accès refusé si non membre ou rôle insuffisant (403/404)
+
+---
+
+## 🚀 Prochaines étapes
+- Gestion des membres : ajouter/retirer/changer rôle (ProjectMember)
+- Permissions complètes par chantier (ProjectMemberRole guard)
+- ActivityLog automatique (interceptor)

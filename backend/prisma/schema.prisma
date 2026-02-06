@@ -51,6 +51,7 @@ model User {
   updatedAt    DateTime   @updatedAt
 
   // Relations
+  refreshTokens RefreshToken[]
   createdProjects Project[]       @relation("ProjectCreatedBy")
   memberships     ProjectMember[]
   activityLogs    ActivityLog[]
@@ -119,4 +120,22 @@ model ActivityLog {
   @@index([projectId])
   @@index([entityType])
   @@map("activity_logs")
+}
+
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  tokenHash   String   @unique
+  jti         String   @unique
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  replacedBy  String?  // id du nouveau refresh token (rotation)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
