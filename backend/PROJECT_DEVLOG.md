@@ -1170,3 +1170,25 @@ Implémenter le module Projects avec un contrôle d’accès basé sur l’appar
 - Gestion des membres : ajouter/retirer/changer rôle (ProjectMember)
 - Permissions complètes par chantier (ProjectMemberRole guard)
 - ActivityLog automatique (interceptor)
+
+
+---
+
+### [2026-02-06] Milestone — Backend foundation stable
+
+**Statut avant pause :**
+- Prisma v7 + adapter opérationnel
+- Auth complet (access + refresh rotation + anti-reuse)
+- JWT guard
+- RBAC global
+- Swagger configuré
+- Module Projects CRUD opérationnel
+- Membership automatique du créateur (OWNER)
+- Accès restreint aux membres du projet
+
+**Tests :**
+- PowerShell validé pour toutes routes protégées
+- Refresh rotation validée
+- Accès refusé sans token (401)
+
+Commit réalisé avant pause.
