@@ -38,61 +38,129 @@ Objectif : garder une trace **de chaque action** (même petite), des fichiers cr
 
 ---
 
-## 3) Format d’entrée (copie/colle)
-
-### [YYYY-MM-DD] Session — <objectif en 1 phrase>
-**Contexte :** <ce que tu veux atteindre aujourd’hui>  
-**Commande(s) exécutée(s) :**
-- `<commande 1>`
-- `<commande 2>`
-
-**Fichiers créés :**
-- `path/to/file` — pourquoi
-- `path/to/other` — pourquoi
-
-**Fichiers modifiés :**
-- `path/to/file` — quoi et pourquoi
-
-**Décisions :**
-- <décision 1> (raison)
-- <décision 2> (raison)
-
-**Tests :**
-- <ce que tu as testé, comment, résultat>
-
-**Résultat :**
-- <ce qui marche maintenant>
-
-**Prochaines étapes :**
-- [ ] <todo 1>
-- [ ] <todo 2>
 
 ---
 
-## 4) Journal des sessions
+### [2026-02-05] Session — Initialisation du backend NestJS
 
-### [2026-02-05] Session — Initialisation du devlog
-**Contexte :** Création du fichier de suivi pour documenter toutes les actions backend/DB.  
-**Commande(s) exécutée(s) :**
-- (à compléter)
+**Objectif de la session :**
+Mettre en place la structure de base du backend avec NestJS dans le dossier backend/.
 
-**Fichiers créés :**
-- `PROJECT_DEVLOG.md` — journal de bord technique
+---
 
-**Fichiers modifiés :**
-- (aucun)
+## 📌 Contexte
 
-**Décisions :**
-- Tenir un devlog unique côté backend/DB pour conserver la mémoire technique.
+Le projet nécessite un backend structuré, scalable et maintenable.
+Le choix s’est porté sur NestJS pour les raisons suivantes :
 
-**Tests :**
-- (n/a)
+- Architecture modulaire claire (modules, services, controllers)
+- Support natif de TypeScript
+- Bonne intégration avec Prisma
+- Gestion propre des middlewares, guards et interceptors
+- Adapté aux architectures REST modernes
 
-**Résultat :**
-- Devlog en place.
+---
 
-**Prochaines étapes :**
-- [ ] Initialiser le backend NestJS
-- [ ] Ajouter docker-compose PostgreSQL
-- [ ] Mettre en place Prisma + migrations
-- [ ] Créer Auth (JWT + refresh) + RBAC de base
+## 🛠 Actions réalisées
+
+### 1️⃣ Clonage du projet et configuration de la branche
+
+- git clone du repository
+- git checkout feature/backend-bootstrap
+- git merge origin/develop
+- git push
+
+But : travailler sur une branche à jour pour éviter les conflits futurs.
+
+---
+
+### 2️⃣ Initialisation du projet NestJS
+
+Commande exécutée :
+
+npx @nestjs/cli new tmp-backend --skip-git --package-manager npm
+
+Raison :
+- Générer un backend propre sans initialiser un repo git séparé.
+- Conserver le repo principal.
+
+---
+
+### 3️⃣ Copie de la structure générée vers backend/
+
+Dossiers créés :
+
+- src/
+- test/
+- node_modules/
+- dist/
+
+Fichiers principaux générés :
+
+- package.json
+- tsconfig.json
+- nest-cli.json
+- eslint.config.mjs
+- .prettierrc
+
+---
+
+### 4️⃣ Installation des dépendances
+
+npm install
+
+---
+
+### 5️⃣ Test du serveur
+
+npm run start:dev
+
+Résultat :
+- L’application démarre correctement
+- Accessible sur http://localhost:3000
+
+---
+
+## 🧠 Concepts appris / compris
+
+### 🔹 Structure NestJS
+
+- main.ts : point d’entrée
+- app.module.ts : module racine
+- app.controller.ts : gestion des routes
+- app.service.ts : logique métier
+
+### 🔹 Compilation TypeScript
+
+Le dossier dist/ contient le code compilé.
+Il ne doit pas être modifié manuellement.
+
+### 🔹 node_modules
+
+Contient les dépendances.
+Ne doit pas être push sur GitHub (vérifier .gitignore).
+
+---
+
+## ⚠️ Points importants
+
+- Toujours travailler en mode développement avec npm run start:dev
+- Ne jamais modifier dist/
+- Les fichiers config (tsconfig, eslint, prettier) garantissent la qualité du code
+
+---
+
+## ✅ Résultat de la session
+
+Backend NestJS fonctionnel.
+Base saine prête pour intégration PostgreSQL + Prisma.
+
+---
+
+## 🚀 Prochaines étapes
+
+- Installer PostgreSQL via Docker
+- Créer docker-compose.yml
+- Configurer la variable DATABASE_URL
+- Installer Prisma
+- Créer le premier schéma de base de données
