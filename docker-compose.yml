@@ -1,39 +1,16 @@
- version: "3.9"
-
 services:
-  postgres:
-    image: postgres:16-alpine
+  db:
+    image: postgres:16
     container_name: cpsm_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: construction_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: cpsm_dev
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - cpsm_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d construction_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  pgadmin:
-    image: dpage/pgadmin4:8
-    container_name: cpsm_pgadmin
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@cpsm.local
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    volumes:
-      - cpsm_pgadmin:/var/lib/pgadmin
 
 volumes:
   cpsm_pgdata:
-  cpsm_pgadmin:

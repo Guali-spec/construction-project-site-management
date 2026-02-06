@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+
+}
+
+/**
+ * Rôles globaux (RBAC global)
+ * Basé sur le cahier des charges : Super Admin, Admin Entreprise, Chef de Projet,
+ * Superviseur, Comptable, Consultant. :contentReference[oaicite:2]{index=2}
+ */
+enum GlobalRole {
+  SUPER_ADMIN
+  ADMIN_ENTREPRISE
+  CHEF_PROJET
+  SUPERVISEUR
+  COMPTABLE
+  CONSULTANT
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectMemberRole {
+  OWNER
+  MANAGER
+  SUPERVISOR
+  ACCOUNTANT
+  VIEWER
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  avatar       String?
+  role         GlobalRole @default(SUPERVISEUR)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  refreshTokens RefreshToken[]
+  createdProjects Project[]       @relation("ProjectCreatedBy")
+  memberships     ProjectMember[]
+  activityLogs    ActivityLog[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      ProjectStatus @default(PLANNED)
+  budget      Decimal?      @db.Decimal(14, 2)
+
+  createdById String
+  createdBy   User          @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  members     ProjectMember[]
+  activityLogs ActivityLog[]
+
+  @@index([status])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id         String            @id @default(uuid())
+  projectId  String
+  userId     String
+  role       ProjectMemberRole @default(VIEWER)
+  assignedAt DateTime          @default(now())
+
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@index([projectId])
+  @@map("project_members")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String?
+
+  action    String
+  entityType String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([entityType])
+  @@map("activity_logs")
+}
+
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  tokenHash   String   @unique
+  jti         String   @unique
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  replacedBy  String?  // id du nouveau refresh token (rotation)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
