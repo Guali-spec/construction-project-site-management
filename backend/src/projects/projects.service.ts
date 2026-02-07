@@ -1,5 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ProjectMemberRole, ProjectStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { PaginationDto } from "../common/dto/pagination.dto";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 
@@ -17,7 +19,7 @@ export class ProjectsService {
         members: {
           create: {
             userId,
-            role: "OWNER",
+            role: ProjectMemberRole.OWNER,
           },
         },
       },
@@ -25,17 +27,33 @@ export class ProjectsService {
     });
   }
 
-  async findAllForUser(userId: string) {
-    return this.prisma.project.findMany({
-      where: { members: { some: { userId } } },
-      orderBy: { createdAt: "desc" },
-    });
+  async findAllForUser(userId: string, pagination: PaginationDto) {
+    const page = pagination.page ?? 1;
+    const limit = pagination.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where = { members: { some: { userId, deletedAt: null } }, deletedAt: null };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.project.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      this.prisma.project.count({ where }),
+    ]);
+
+    return {
+      items,
+      meta: { page, limit, total },
+    };
   }
 
   async findOneForUser(userId: string, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, members: { some: { userId } } },
-      include: { members: true },
+      where: { id: projectId, deletedAt: null, members: { some: { userId, deletedAt: null } } },
+      include: { members: { where: { deletedAt: null } } },
     });
 
     if (!project) throw new NotFoundException("Project not found");
@@ -43,12 +61,13 @@ export class ProjectsService {
   }
 
   async update(userId: string, projectId: string, dto: UpdateProjectDto) {
-    const membership = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
+    const membership = await this.prisma.projectMember.findFirst({
+      where: { projectId, userId, deletedAt: null },
     });
 
     if (!membership) throw new NotFoundException("Project not found");
-    if (!["OWNER", "MANAGER"].includes(membership.role)) {
+    const allowedRoles: ProjectMemberRole[] = [ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER];
+    if (!allowedRoles.includes(membership.role)) {
       throw new ForbiddenException("Not allowed");
     }
 
@@ -63,18 +82,19 @@ export class ProjectsService {
   }
 
   async archive(userId: string, projectId: string) {
-    const membership = await this.prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId } },
+    const membership = await this.prisma.projectMember.findFirst({
+      where: { projectId, userId, deletedAt: null },
     });
 
     if (!membership) throw new NotFoundException("Project not found");
-    if (!["OWNER", "MANAGER"].includes(membership.role)) {
+    const allowedRoles: ProjectMemberRole[] = [ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER];
+    if (!allowedRoles.includes(membership.role)) {
       throw new ForbiddenException("Not allowed");
     }
 
     return this.prisma.project.update({
       where: { id: projectId },
-      data: { status: "ARCHIVED" },
+      data: { status: ProjectStatus.ARCHIVED },
     });
   }
 }
