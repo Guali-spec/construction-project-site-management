@@ -1192,3 +1192,430 @@ ImplÃ©menter le module Projects avec un contrÃ´le dâ€™accÃ¨s basÃ© sur lâ€™appar
 - AccÃ¨s refusÃ© sans token (401)
 
 Commit rÃ©alisÃ© avant pause.
+
+
+---
+
+### [2026-02-06] Session â€” Permissions par chantier (ProjectRoleGuard) + gestion membres
+
+**Objectif :**
+Mettre en place un guard rÃ©utilisable basÃ© sur le rÃ´le de lâ€™utilisateur dans un projet (ProjectMemberRole),
+puis exposer des endpoints pour gÃ©rer les membres.
+
+---
+
+## ðŸ§© Composants ajoutÃ©s
+
+### Decorator
+- @ProjectRoles(...)
+
+### Guard
+- ProjectRoleGuard :
+  - lit les rÃ´les requis via Reflector
+  - rÃ©cupÃ¨re projectId depuis params
+  - vÃ©rifie membership via Prisma (projectId_userId)
+  - retourne NotFound si non membre (anti-leak)
+
+---
+
+## ðŸ‘¥ Endpoints membres
+- POST /projects/:projectId/members (OWNER, MANAGER)
+- PATCH /projects/:projectId/members/:userId (OWNER, MANAGER)
+- DELETE /projects/:projectId/members/:userId (OWNER)
+
+**RÃ¨gles :**
+- Interdit de modifier/supprimer OWNER
+- MANAGER ne peut pas promouvoir en MANAGER
+- EmpÃªche doublon membership
+
+---
+
+## âœ… RÃ©sultat
+- ContrÃ´le dâ€™accÃ¨s par chantier opÃ©rationnel
+- Gestion des membres prÃªte pour les modules mÃ©tier (Tasks/Workers/Materials)
+
+---
+
+### [2026-02-06] Session — Fix P1012 (ProjectMemberRole default)
+
+**Objectif :**
+Corriger l'erreur Prisma P1012 liée au default invalide `VIEWER`.
+
+**Constat :**
+`ProjectMember.role` utilise `@default(VIEWER)` alors que l'enum `ProjectMemberRole` ne contient pas `VIEWER`.
+
+**Décision :**
+Supprimer le default pour forcer un rôle explicite à chaque création de membership.
+
+**Pourquoi :**
+Un rôle implicite est risqué côté sécurité. Le domaine doit être explicite.
+
+**Fichiers modifiés :**
+- `backend/prisma/schema.prisma` (suppression du default)
+- `backend/src/projects/projects-members.service.ts` (alignement TypeScript sur enum Prisma)
+- `backend/src/projects/projects-members.controller.ts` (alignement TypeScript sur enum Prisma)
+
+**Impact DB :**
+- Migration à générer : suppression du default sur `project_members.role`
+
+**Impact backend :**
+- Le rôle est désormais obligatoire à la création (DTO/service)
+
+**Commandes (à exécuter) :**
+- npx prisma migrate dev --name fix_project_member_role_default
+- npx prisma generate
+
+---
+
+### [2026-02-06] Session — ProjectRoleGuard (finalisation)
+
+**Objectif :**
+Finaliser le guard de permissions par chantier avec typage strict et résolution robuste du projectId.
+
+**Décisions :**
+- Utiliser l'enum Prisma `ProjectMemberRole` côté decorator/guard pour éviter les chaînes “magiques”.
+- Résoudre `projectId` depuis `params`, puis `body` ou `query` pour supporter différents endpoints.
+- Retourner `400 BadRequest` si aucun `projectId` n'est disponible (erreur de requête claire).
+
+**Fichiers modifiés :**
+- `backend/src/auth/decorators/project-roles.decorator.ts`
+- `backend/src/auth/guards/project-role.guard.ts`
+
+**Impact backend :**
+- Typage fort des rôles projet
+- Guard plus robuste et cohérent sur tous les endpoints
+
+---
+
+### [2026-02-06] Session — Validation stricte des rôles (DTO members)
+
+**Objectif :**
+Rendre la validation des rôles strictes via DTO + class-validator sur les endpoints membres.
+
+**Décisions :**
+- Centraliser les payloads dans des DTO dédiés.
+- Utiliser `IsEnum(ProjectMemberRole)` pour aligner strictement avec Prisma.
+- Bloquer `OWNER` en input via `NotEquals(ProjectMemberRole.OWNER)`.
+
+**Fichiers créés :**
+- `backend/src/projects/dto/add-project-member.dto.ts`
+- `backend/src/projects/dto/update-project-member-role.dto.ts`
+
+**Fichier modifié :**
+- `backend/src/projects/projects-members.controller.ts`
+
+**Impact backend :**
+- Validation stricte des payloads sur ajout/changement de rôle
+- Réduction des erreurs et des escalades de privilèges
+
+---
+
+### [2026-02-06] Session — Règle « dernier OWNER » (members)
+
+**Objectif :**
+Empêcher la suppression ou la rétrogradation du dernier OWNER d’un projet.
+
+**Décisions :**
+- Autoriser la modification/suppression d’un OWNER uniquement s’il existe au moins un autre OWNER.
+- Restreindre ces opérations aux OWNER.
+
+**Implémentation :**
+- Ajout d’un compteur d’OWNERS par projet.
+- Vérification avant suppression ou changement de rôle d’un OWNER.
+
+**Fichier modifié :**
+- `backend/src/projects/projects-members.service.ts`
+
+**Impact backend :**
+- Garantie d’au moins un OWNER par projet
+- Protection contre perte d’administration du chantier
+
+---
+
+### [2026-02-06] Session — Schema Tasks/Phases/Lots (Prisma)
+
+**Objectif :**
+Ajouter la modélisation des phases, lots et tâches, avec affectation des tâches aux ouvriers.
+
+**Décisions :**
+- Hiérarchie : Project -> Phase -> Lot -> Task.
+- Les tâches sont assignées à un `Worker` (et non à un User).
+- Suivi d’avancement via `status`, `progress`, `priority`.
+- Coûts prévisionnels vs réels stockés sur Task.
+
+**Enums ajoutés :**
+- `TaskStatus` (TODO, IN_PROGRESS, DONE, BLOCKED)
+- `TaskPriority` (LOW, MEDIUM, HIGH, CRITICAL)
+
+**Modèles ajoutés :**
+- `Phase`
+- `Lot`
+- `Task`
+- `Worker`
+
+**Fichier modifié :**
+- `backend/prisma/schema.prisma`
+
+**Impact DB :**
+- Nouvelles tables `phases`, `lots`, `tasks`, `workers`
+- Indexation sur clés étrangères et status
+
+**Commandes (à exécuter) :**
+- npx prisma migrate dev --name add_phases_lots_tasks_workers
+- npx prisma generate
+
+---
+
+### [2026-02-06] Session — CRUD Phases/Lots/Tasks (DTO + Services + Controllers)
+
+**Objectif :**
+Mettre en place les endpoints de base pour les phases, lots et tâches avec validation stricte.
+
+**Décisions :**
+- Endpoints imbriqués par chantier : `projects/:projectId/phases`, `.../lots`, `.../tasks`.
+- Permissions : lecture pour tous les membres, écriture réservée à OWNER/MANAGER.
+- Vérifications d'intégrité : phase/lot/task doivent appartenir au projet ciblé.
+- Tâches assignées à un `Worker` avec contrôle d'appartenance au projet.
+
+**DTO créés :**
+- `backend/src/projects/dto/create-phase.dto.ts`
+- `backend/src/projects/dto/update-phase.dto.ts`
+- `backend/src/projects/dto/create-lot.dto.ts`
+- `backend/src/projects/dto/update-lot.dto.ts`
+- `backend/src/projects/dto/create-task.dto.ts`
+- `backend/src/projects/dto/update-task.dto.ts`
+
+**Services ajoutés :**
+- `backend/src/projects/phases.service.ts`
+- `backend/src/projects/lots.service.ts`
+- `backend/src/projects/tasks.service.ts`
+
+**Controllers ajoutés :**
+- `backend/src/projects/phases.controller.ts`
+- `backend/src/projects/lots.controller.ts`
+- `backend/src/projects/tasks.controller.ts`
+
+**Module modifié :**
+- `backend/src/projects/projects.module.ts`
+
+**Impact backend :**
+- CRUD complet Phase/Lot/Task avec validation et contrôle d'accès par chantier
+
+---
+
+### [2026-02-06] Session — CRUD Workers (DTO + Service + Controller)
+
+**Objectif :**
+Ajouter la gestion des ouvriers par chantier avec validation stricte et contrôle d'accès.
+
+**Décisions :**
+- Endpoints imbriqués par chantier : `projects/:projectId/workers`.
+- Lecture pour tous les membres, écriture réservée à OWNER/MANAGER.
+- Validation côté DTO (noms obligatoires, dailyRate >= 0).
+
+**DTO créés :**
+- `backend/src/projects/dto/create-worker.dto.ts`
+- `backend/src/projects/dto/update-worker.dto.ts`
+
+**Service ajouté :**
+- `backend/src/projects/workers.service.ts`
+
+**Controller ajouté :**
+- `backend/src/projects/workers.controller.ts`
+
+**Module modifié :**
+- `backend/src/projects/projects.module.ts`
+
+**Impact backend :**
+- CRUD complet Workers avec guard projet et validation
+
+---
+
+### [2026-02-06] Session — Swagger (phases/lots/tasks/workers)
+
+**Objectif :**
+Documenter les nouveaux endpoints Phase/Lot/Task/Worker dans Swagger.
+
+**Décisions :**
+- Tags dédiés par ressource pour une navigation claire.
+- BearerAuth appliqué au niveau controller.
+- Params documentés (projectId, phaseId, lotId, taskId, workerId).
+
+**Fichiers modifiés :**
+- `backend/src/projects/phases.controller.ts`
+- `backend/src/projects/lots.controller.ts`
+- `backend/src/projects/tasks.controller.ts`
+- `backend/src/projects/workers.controller.ts`
+
+---
+
+### [2026-02-06] Session — ActivityLog automatique (Interceptor)
+
+**Objectif :**
+Logger automatiquement les actions d’écriture (POST/PATCH/DELETE) dans `activity_logs`.
+
+**Décisions :**
+- Interceptor global pour centraliser l’audit trail.
+- Log uniquement des méthodes d’écriture (pas de GET/HEAD/OPTIONS).
+- Capture : userId, projectId (si présent), entityType, entityId, path, ip.
+
+**Fichier créé :**
+- `backend/src/activity-log/activity-log.interceptor.ts`
+
+**Fichier modifié :**
+- `backend/src/app.module.ts` (enregistrement global via APP_INTERCEPTOR)
+
+**Impact backend :**
+- Audit trail automatique pour toutes les opérations sensibles
+
+---
+
+### [2026-02-06] Session — Soft Delete global + Pagination
+
+**Objectif :**
+Activer le soft delete sur toutes les tables et ajouter la pagination sur les listes principales.
+
+**Décisions :**
+- Ajout d’un champ `deletedAt` (nullable) sur tous les modèles.
+- Middleware Prisma :
+  - filtre automatiquement `deletedAt = null` sur les lectures
+  - transforme `delete/deleteMany` en update soft delete
+- Pagination standardisée (page/limit) avec réponse `{ items, meta }`.
+
+**Schéma Prisma modifié :**
+- `User`, `Project`, `ProjectMember`, `Phase`, `Lot`, `Task`, `Worker`, `ActivityLog`, `RefreshToken`
+
+**Middleware ajouté :**
+- `backend/src/prisma/prisma.service.ts`
+
+**Pagination ajoutée :**
+- `backend/src/common/dto/pagination.dto.ts`
+- Listes projets, phases, lots, tasks, workers
+
+**Fichiers modifiés (principaux) :**
+- `backend/prisma/schema.prisma`
+- `backend/src/prisma/prisma.service.ts`
+- `backend/src/projects/projects.service.ts`
+- `backend/src/projects/phases.service.ts`
+- `backend/src/projects/lots.service.ts`
+- `backend/src/projects/tasks.service.ts`
+- `backend/src/projects/workers.service.ts`
+- Controllers correspondants (pagination + swagger query)
+
+**Notes importantes :**
+- Suppression logique en cascade :
+  - Phase -> Lots -> Tasks
+  - Lot -> Tasks
+  - Worker -> désaffectation des tâches
+
+---
+
+### [2026-02-06] Session — Sécurisation avancée (Helmet, CORS strict, Rate limiting)
+
+**Objectif :**
+Renforcer la sécurité HTTP côté API.
+
+**Décisions :**
+- Helmet activé pour les headers de sécurité.
+- CORS strict configuré via `CORS_ORIGINS`.
+- Rate limiting global via `@nestjs/throttler`.
+
+**Fichiers modifiés :**
+- `backend/package.json` (ajout deps)
+- `backend/src/app.module.ts` (ThrottlerModule + ThrottlerGuard)
+- `backend/src/main.ts` (helmet + CORS strict + PORT env)
+- `backend/.env.example` (THROTTLE_TTL, THROTTLE_LIMIT, CORS_ORIGINS)
+
+**Commandes (à exécuter) :**
+- npm install
+
+---
+
+### [2026-02-06] Session — Préparation production (env validation + logs structurés)
+
+**Objectif :**
+Rendre l’exécution plus robuste en validant l’environnement et en activant des logs structurés.
+
+**Décisions :**
+- Validation stricte des variables d’environnement via Joi.
+- Logs HTTP structurés via `nestjs-pino` (pretty en dev, compact en prod).
+
+**Fichiers créés :**
+- `backend/src/config/env.validation.ts`
+
+**Fichiers modifiés :**
+- `backend/src/app.module.ts`
+- `backend/src/main.ts`
+- `backend/package.json`
+- `backend/.env.example`
+
+**Commandes (à exécuter) :**
+- npm install
+
+---
+
+### [2026-02-06] Session — Swagger avancé (réponses + pagination)
+
+**Objectif :**
+Améliorer la documentation Swagger avec réponses explicites et exemples de pagination.
+
+**Décisions :**
+- `ApiCreatedResponse` sur les créations.
+- `ApiOkResponse` sur lectures/updates/deletes.
+- Exemple `{ items, meta }` pour les listes paginées.
+
+**Fichiers modifiés :**
+- `backend/src/projects/projects.controller.ts`
+- `backend/src/projects/phases.controller.ts`
+- `backend/src/projects/lots.controller.ts`
+- `backend/src/projects/tasks.controller.ts`
+- `backend/src/projects/workers.controller.ts`
+
+---
+
+### [2026-02-06] Session — Tests unitaires (services clés)
+
+**Objectif :**
+Ajouter des tests unitaires de base pour sécuriser les règles métier critiques.
+
+**Tests ajoutés :**
+- `ProjectsMembersService` : dernier OWNER, addMember OWNER interdit, réactivation soft delete
+- `ProjectsService` : pagination + contrôles d’accès
+
+**Fichiers créés :**
+- `backend/src/projects/projects-members.service.spec.ts`
+- `backend/src/projects/projects.service.spec.ts`
+
+---
+
+### [2026-02-06] Session — Tests e2e (auth + projects + tasks)
+
+**Objectif :**
+Valider le flux principal de bout en bout : auth -> projet -> phase/lot -> worker -> task.
+
+**Test ajouté :**
+- `backend/test/app.e2e-spec.ts`
+
+**Notes :**
+- Utilise un email unique par exécution (timestamp)
+- Nécessite une DB disponible et les migrations appliquées
+
+**Commande :**
+- npm run test:e2e
+
+---
+
+### [2026-02-06] Session — Fix Jest e2e (uuid ESM)
+
+**Objectif :**
+Corriger l’erreur Jest liée au package `uuid` (ESM) lors des tests e2e.
+
+**Décision :**
+Remplacer `uuid` par `crypto.randomUUID()` (Node 18+), évite ESM dans Jest.
+
+**Fichiers modifiés :**
+- `backend/src/auth/auth.service.ts`
+- `backend/package.json`
+
+**Action :**
+- npm install (pour mettre à jour le lockfile si nécessaire)
