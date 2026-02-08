@@ -11,10 +11,18 @@ export default function ResourcesContent() {
           <p className="text-slate-600 mt-0.5">Ouvriers, compétences, présences, productivité et affectations.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm"
+            aria-label="Ajouter un nouvel ouvrier"
+          >
             <UserPlus size={18} /> Nouvel ouvrier
           </button>
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-sm"
+            aria-label="Exporter les données de paie"
+          >
             <Download size={18} /> Export paie
           </button>
         </div>
@@ -43,8 +51,16 @@ export default function ResourcesContent() {
       {/* Base ouvriers + compétences */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2">
-          <input type="text" placeholder="Rechercher par nom, compétence..." className="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-          <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700">
+          <input 
+            type="text" 
+            placeholder="Rechercher par nom, compétence..." 
+            className="flex-1 min-w-[200px] px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            aria-label="Rechercher un ouvrier par nom ou compétence"
+          />
+          <select 
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700"
+            aria-label="Filtrer par chantier"
+          >
             <option>Tous les chantiers</option>
           </select>
         </div>

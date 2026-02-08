@@ -59,4 +59,40 @@ export class ProjectsController {
     const user = req.user as any;
     return this.projects.archive(user.sub, id);
   }
+
+  @Get(":id/phases")
+  @ApiOkResponse({ description: "Project phases" })
+  getProjectPhases(@Req() req: Request, @Param("id") id: string) {
+    return this.projects.getProjectPhases(id);
+  }
+
+  @Get(":id/lots")
+  @ApiOkResponse({ description: "Project lots" })
+  getProjectLots(@Req() req: Request, @Param("id") id: string) {
+    return this.projects.getProjectLots(id);
+  }
+
+  @Get(":id/tasks")
+  @ApiOkResponse({ description: "Project tasks" })
+  getProjectTasks(@Req() req: Request, @Param("id") id: string) {
+    return this.projects.getProjectTasks(id);
+  }
+
+  @Get(":id/workers")
+  @ApiOkResponse({ description: "Project workers" })
+  getProjectWorkers(@Req() req: Request, @Param("id") id: string) {
+    return this.projects.getProjectWorkers(id);
+  }
+
+  @Get(":id/stats")
+  @ApiOkResponse({ description: "Project statistics" })
+  getProjectStats(@Req() req: Request, @Param("id") id: string) {
+    return this.projects.getProjectStats(id);
+  }
+
+  @Get("stats")
+  @ApiOkResponse({ description: "All projects statistics" })
+  getAllProjectsStats() {
+    return this.projects.getAllProjectsStats();
+  }
 }

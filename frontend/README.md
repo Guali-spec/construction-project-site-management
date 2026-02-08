@@ -2,7 +2,7 @@
 
 Interface web **React/Next.js** pour la gestion et le pilotage des chantiers (rôle : frontend + intégration).
 
-Les écrans et la navigation sont en place ; les **données sont fictives** et seront remplacées par l’**API backend** et les flux **mobile** (Flutter). Voir [INTEGRATION.md](./INTEGRATION.md) pour les points d’intégration.
+✅ **Intégration backend** : Les modules Auth et Chantiers sont connectés au backend. Voir [INTEGRATION.md](./INTEGRATION.md) pour les détails.
 
 ## Getting Started
 
@@ -23,7 +23,23 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 - **Stack** : Next.js 15, React 18, Tailwind CSS 4, TypeScript.
-- **API** : `NEXT_PUBLIC_API_URL` (défaut `http://localhost:3001/api`). Client dans `src/services/api-client.ts`.
+- **API** : `NEXT_PUBLIC_API_URL` (défaut `http://localhost:3000`). Client dans `src/services/api-client.ts`.
+
+## Configuration
+
+Avant de démarrer l'application, créez un fichier `.env.local` dans le dossier `frontend/` :
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+⚠️ **Note importante** : 
+- Le backend écoute sur le port **3000** par défaut (pas 3001)
+- Le backend n'utilise pas de préfixe `/api`, les routes sont directement `/auth`, `/projects`, etc.
+
+Remplacez l'URL par celle de votre serveur backend si nécessaire.
+
+**Important** : Assurez-vous que le backend est démarré et accessible avant de lancer le frontend.
 
 ## Learn More
 

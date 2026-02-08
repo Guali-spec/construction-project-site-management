@@ -13,7 +13,10 @@ export default function SuiviContent() {
       {/* Sélecteur chantier */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
         <label className="block text-sm font-medium text-slate-700 mb-2">Chantier</label>
-        <select className="w-full max-w-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500/30 text-slate-800">
+        <select 
+          className="w-full max-w-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500/30 text-slate-800"
+          aria-label="Sélectionner un chantier"
+        >
           <option>Tous les chantiers</option>
           <option>Chantier A</option>
           <option>Chantier B</option>

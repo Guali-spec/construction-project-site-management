@@ -11,10 +11,18 @@ export default function FinanceContent() {
           <p className="text-slate-600 mt-0.5">Dépenses, validation, rapprochement devis/factures, alertes et prévisions.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm"
+            aria-label="Ajouter une nouvelle dépense"
+          >
             <DollarSign size={18} /> Nouvelle dépense
           </button>
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-sm"
+            aria-label="Exporter les données comptables"
+          >
             <Download size={18} /> Export comptable
           </button>
         </div>
@@ -53,16 +61,28 @@ export default function FinanceContent() {
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2 items-center">
           <Filter size={18} className="text-slate-500" />
-          <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+          <select 
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            aria-label="Filtrer par chantier"
+          >
             <option>Tous les chantiers</option>
           </select>
-          <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+          <select 
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            aria-label="Filtrer par catégorie"
+          >
             <option>Toutes catégories</option>
           </select>
-          <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+          <select 
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            aria-label="Filtrer par période"
+          >
             <option>Toutes périodes</option>
           </select>
-          <select className="px-3 py-2 border border-slate-200 rounded-lg text-sm">
+          <select 
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+            aria-label="Filtrer par statut"
+          >
             <option>Statut : Tous</option>
             <option>En attente</option>
             <option>Validé</option>

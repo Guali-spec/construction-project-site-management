@@ -1,6 +1,6 @@
 // Types pour l'authentification
 export interface User {
-    id: number;
+    id: string;
     email: string;
     firstName: string;
     lastName: string;
@@ -21,7 +21,7 @@ export interface User {
   
   // Types pour les chantiers (projets)
   export interface Project {
-    id: number;
+    id: string;
     name: string;
     description: string;
     location: string;

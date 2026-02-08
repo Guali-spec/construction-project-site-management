@@ -7,9 +7,17 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
+    const loadUser = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUser();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -18,7 +26,8 @@ export const useAuth = () => {
       setUser(response.user);
       return { success: true, data: response };
     } catch (error) {
-      return { success: false, error: 'Identifiants invalides' };
+      const errorMessage = error instanceof Error ? error.message : 'Identifiants invalides';
+      return { success: false, error: errorMessage };
     }
   };
 

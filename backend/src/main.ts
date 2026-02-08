@@ -17,16 +17,26 @@ async function bootstrap() {
     }),
   );
 
-  const corsOriginsRaw = process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:5173";
-  const corsOrigins = corsOriginsRaw
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-
+  // CORS : autoriser le frontend Next.js (généralement sur 3000 ou 3001)
   app.enableCors({
-    origin: corsOrigins,
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type"],
+    origin: (origin, callback) => {
+      console.log('CORS - Origin reçue:', origin);
+      // En développement, autoriser localhost, 127.0.0.1 et les adresses IP locales
+      if (!origin || 
+          origin.startsWith('http://localhost:') || 
+          origin.startsWith('http://127.0.0.1:') ||
+          origin.startsWith('http://192.168.') ||
+          origin.startsWith('http://10.') ||
+          origin.startsWith('http://172.')) {
+        console.log('CORS - Autorisée pour:', origin);
+        callback(null, true);
+      } else {
+        console.log('CORS - Refusée pour:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"],
+    allowedHeaders: ["Authorization", "Content-Type", "X-Requested-With"],
     credentials: true,
   });
 
@@ -55,6 +65,9 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(parseInt(process.env.PORT ?? "3000", 10));
+  const port = parseInt(process.env.PORT ?? "3000", 10);
+  await app.listen(port);
+  console.log(`🚀 Backend démarré sur http://localhost:${port}`);
+  console.log(`📚 Documentation Swagger: http://localhost:${port}/docs`);
 }
 bootstrap();

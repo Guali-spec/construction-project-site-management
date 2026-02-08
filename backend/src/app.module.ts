@@ -11,6 +11,12 @@ import { AppService } from "./app.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
+import { SeedModule } from "./seed/seed.module";
+import { ResourcesModule } from "./resources/resources.module";
+import { FinanceModule } from "./finance/finance.module";
+import { TrackingModule } from "./tracking/tracking.module";
+import { ProjectManagementModule } from "./project-management/project-management.module";
 
 import { RolesGuard } from "./auth/guards/roles.guard";
 import { ActivityLogInterceptor } from "./activity-log/activity-log.interceptor";
@@ -47,6 +53,12 @@ import { envValidationSchema } from "./config/env.validation";
     PrismaModule,
     AuthModule,
     ProjectsModule,
+    DashboardModule,
+    SeedModule,
+    ResourcesModule,
+    FinanceModule,
+    TrackingModule,
+    ProjectManagementModule,
   ],
   controllers: [AppController],
   providers: [

@@ -19,7 +19,10 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
+    ? (user.firstName && user.lastName ? `${user.firstName[0]}${user.lastName[0]}` :
+       user.firstName ? user.firstName[0] :
+       user.lastName ? user.lastName[0] :
+       user.email ? user.email[0] : '?').toUpperCase()
     : '?';
 
   const handleLogout = async () => {
@@ -66,7 +69,9 @@ export default function Sidebar() {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user ? `${user.firstName} ${user.lastName}`.trim() || user.email : '—'}</p>
+            <p className="text-sm font-medium truncate">{user ? 
+    (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}`.trim() : 
+     user.firstName || user.lastName || user.email) : '—'}</p>
             <p className="text-xs text-slate-400 truncate">{user?.role ?? '—'}</p>
           </div>
         </div>

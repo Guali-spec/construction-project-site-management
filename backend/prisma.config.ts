@@ -1,12 +1,14 @@
 import "dotenv/config";
-import { defineConfig } from "prisma/config";
 
-export default defineConfig({
+export default {
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
-  datasource: {
-    url: process.env.DATABASE_URL!,
+  datasources: {
+    db: {
+      provider: "sqlite",
+      url: "file:./dev.db",
+    },
   },
-});
+};

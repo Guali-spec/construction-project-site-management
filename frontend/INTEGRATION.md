@@ -10,7 +10,9 @@ L’interface web est **prête pour l’intégration**. Les données et comporte
 
 ## Configuration
 
-- **URL API** : `NEXT_PUBLIC_API_URL` dans `.env.local` (défaut : `http://localhost:3001/api`)
+- **URL API** : `NEXT_PUBLIC_API_URL` dans `.env.local` (défaut : `http://localhost:3000`)
+  - ⚠️ Le backend n'utilise pas de préfixe `/api`, les routes sont directement `/auth`, `/projects`, etc.
+  - Le backend écoute sur le port **3000** par défaut (pas 3001)
 - **Client HTTP** : `src/services/api-client.ts` (axios, token JWT, 401 → redirect login)
 
 ---
@@ -32,8 +34,32 @@ L’interface web est **prête pour l’intégration**. Les données et comporte
 
 ## État actuel
 
-- **Auth** : mock dans `auth.service.ts` (démo admin@test.com / password123). Remplacer par `apiClient.post('/auth/login', …)` et gérer la réponse (token, user).
-- **Chantiers** : `projects.service.ts` utilise déjà un mock ; remplacer par les vrais appels API (GET/POST/PUT chantiers).
-- **Autres modules** : UI et navigation en place ; données en dur ou placeholders. Créer des services (ex. `suivi.service.ts`, `resources.service.ts`, etc.) et appeler le backend dès que les endpoints sont prêts.
+### ✅ Intégration terminée
 
-Dès que le backend et/ou le mobile exposent les API, il suffit de brancher les appels dans ces services et de retirer les mocks.
+- **Auth** : ✅ Connecté au backend via `POST /auth/login` et `GET /auth/me`. Le service `auth.service.ts` utilise maintenant les vrais endpoints API.
+- **Chantiers** : ✅ Connecté au backend via `GET /projects`, `POST /projects`, `GET /projects/:id`, `PUT /projects/:id`, `DELETE /projects/:id`. Le service `projects.service.ts` utilise maintenant les vrais endpoints API.
+- **Client API** : ✅ Configuré avec intercepteurs pour JWT, gestion d'erreurs (401, 403, 500, erreurs réseau).
+
+### 🔄 À intégrer (quand les endpoints backend seront prêts)
+
+- **Dashboard** : UI en place ; créer `dashboard.service.ts` et appeler les endpoints KPIs/statistiques.
+- **Suivi** : UI en place ; créer `suivi.service.ts` et appeler les endpoints de suivi (planning, avancement, photos, budget).
+- **Ressources** : UI en place ; créer `resources.service.ts` et appeler les endpoints (ouvriers, compétences, présences, affectations).
+- **Finances** : UI en place ; créer `finance.service.ts` et appeler les endpoints (dépenses, validation, catégories).
+- **Rapports** : UI en place ; créer `reports.service.ts` et appeler les endpoints (templates, génération PDF/Excel).
+- **Admin** : UI en place ; créer `admin.service.ts` et appeler les endpoints (utilisateurs, permissions, logs, paramètres).
+
+## Configuration requise
+
+1. Créer un fichier `.env.local` dans le dossier `frontend/` avec :
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:3000
+   ```
+   ⚠️ **Important** : 
+   - Le backend écoute sur le port **3000** par défaut (pas 3001)
+   - Le backend n'utilise pas de préfixe `/api`, les routes sont directement `/auth`, `/projects`, etc.
+   - (Remplacez par l'URL de votre serveur backend en production)
+
+2. S'assurer que le backend est démarré et accessible à l'URL configurée.
+
+3. Les tokens JWT sont automatiquement gérés par le client API (`api-client.ts`).

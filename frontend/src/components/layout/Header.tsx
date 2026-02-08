@@ -5,9 +5,14 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function Header() {
   const { user } = useAuth();
-  const displayName = user ? `${user.firstName} ${user.lastName}`.trim() || user.email : '—';
+  const displayName = user ? 
+    (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}`.trim() : 
+     user.firstName || user.lastName || user.email) : '—';
   const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
+    ? (user.firstName && user.lastName ? `${user.firstName[0]}${user.lastName[0]}` :
+       user.firstName ? user.firstName[0] :
+       user.lastName ? user.lastName[0] :
+       user.email ? user.email[0] : '?').toUpperCase()
     : '?';
 
   return (

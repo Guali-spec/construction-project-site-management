@@ -10,7 +10,11 @@ export default function ReportsContent() {
           <h1 className="text-2xl font-bold text-slate-800">Rapports</h1>
           <p className="text-slate-600 mt-0.5">Templates personnalisables, export PDF/Excel, rapports automatiques et archivage.</p>
         </div>
-        <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm shrink-0">
+        <button 
+          type="button" 
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm shrink-0"
+          aria-label="Créer un nouveau rapport"
+        >
           <FileBarChart size={18} /> Nouveau rapport
         </button>
       </div>
@@ -21,7 +25,10 @@ export default function ReportsContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Template</label>
-            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-slate-800 text-sm">
+            <select 
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-slate-800 text-sm"
+              aria-label="Sélectionner un template de rapport"
+            >
               <option>Rapport d’avancement mensuel</option>
               <option>Rapport financier</option>
               <option>Synthèse multi-chantiers</option>
@@ -29,16 +36,27 @@ export default function ReportsContent() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Chantier / Période</label>
-            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-slate-800 text-sm">
+            <select 
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white text-slate-800 text-sm"
+              aria-label="Sélectionner un chantier ou une période"
+            >
               <option>Tous — Mois en cours</option>
             </select>
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm"
+            aria-label="Exporter le rapport en PDF"
+          >
             <FileDown size={18} /> Export PDF
           </button>
-          <button type="button" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm">
+          <button 
+            type="button" 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm"
+            aria-label="Exporter le rapport en Excel"
+          >
             <Download size={18} /> Export Excel
           </button>
         </div>
