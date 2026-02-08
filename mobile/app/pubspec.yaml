@@ -1,0 +1,39 @@
+name: app
+description: "A new Flutter project."
+publish_to: 'none' # projet privé
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icônes iOS
+  cupertino_icons: ^1.0.8
+
+  # Pour appeler l'API backend
+  http: ^1.2.0
+
+  # Pour stocker le JWT en toute sécurité
+  flutter_secure_storage: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Linter pour bonnes pratiques
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets (images, fonts, etc.) à ajouter ici si besoin
+  # assets:
+  #   - images/logo.png
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: fonts/Roboto-Regular.ttf
