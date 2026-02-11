@@ -1,79 +1,108 @@
-import 'package:flutter/material.dart';
-import 'models/chantier.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/features/chantier/presentation/providers/chantier_controller.dart';
 import 'widgets/chantier_card.dart';
 import '../taches/tache_list_screen.dart';
+import '../workers/presentation/screens/workers_screen.dart';
+import '../attendances/presentation/screens/attendances_screen.dart';
+import '../photos/presentation/screens/photos_screen.dart';
 
-class ChantierListScreen extends StatelessWidget {
+class ChantierListScreen extends ConsumerStatefulWidget {
   const ChantierListScreen({super.key});
 
   @override
+  ConsumerState<ChantierListScreen> createState() => _ChantierListScreenState();
+}
+
+class _ChantierListScreenState extends ConsumerState<ChantierListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(chantierControllerProvider.notifier).load());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final chantiers = [
-  Chantier(
-    id: '1',
-    name: 'Immeuble R+3',
-    status: 'en cours',
-    location: 'Ouagadougou',
-    taskCount: 5,
-  ),
-  Chantier(
-    id: '2',
-    name: 'Villa Duplex',
-    status: 'suspendu',
-    location: 'Koudougou',
-    taskCount: 2,
-  ),
-  Chantier(
-    id: '3',
-    name: 'École primaire',
-    status: 'terminé',
-    location: 'Bobo-Dioulasso',
-    taskCount: 8,
-  ),
-];
+    final state = ref.watch(chantierControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Chantiers")),
+      appBar: AppBar(title: const Text('Chantiers')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔹 Message de bienvenue
-            const Text(
-              "Bienvenue sur vos chantiers 👷‍♂️",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
+        child: Builder(
+          builder: (context) {
+            if (state.status == ChantierStatus.loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state.status == ChantierStatus.error) {
+              return Center(child: Text(state.error ?? 'Erreur'));
+            }
+            if (state.items.isEmpty) {
+              return const Center(child: Text('Aucun chantier'));
+            }
 
-            // 🔹 Liste des chantiers
-            Expanded(
-              child: ListView.builder(
-                itemCount: chantiers.length,
-                itemBuilder: (context, index) {
-                  final chantier = chantiers[index];
+            return ListView.builder(
+              itemCount: state.items.length,
+              itemBuilder: (context, index) {
+                final chantier = state.items[index];
+                return ChantierCard(
+                  chantier: chantier,
+                  onTasks: () => _openTasks(context, chantier.id, chantier.name),
+                  onWorkers: () => _openWorkers(context, chantier.id, chantier.name),
+                  onAttendances: () => _openAttendances(context, chantier.id, chantier.name),
+                  onPhotos: () => _openPhotos(context, chantier.id, chantier.name),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                  return ChantierCard(
-                    chantier: chantier,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TacheListScreen(
-                            chantierId: chantier.id,
-                            chantierName: chantier.name,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+  void _openTasks(BuildContext context, String projectId, String projectName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TacheListScreen(
+          chantierId: projectId,
+          chantierName: projectName,
+        ),
+      ),
+    );
+  }
+
+  void _openWorkers(BuildContext context, String projectId, String projectName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkersScreen(
+          projectId: projectId,
+          projectName: projectName,
+        ),
+      ),
+    );
+  }
+
+  void _openAttendances(BuildContext context, String projectId, String projectName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AttendancesScreen(
+          projectId: projectId,
+          projectName: projectName,
+        ),
+      ),
+    );
+  }
+
+  void _openPhotos(BuildContext context, String projectId, String projectName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotosScreen(
+          projectId: projectId,
+          projectName: projectName,
         ),
       ),
     );
