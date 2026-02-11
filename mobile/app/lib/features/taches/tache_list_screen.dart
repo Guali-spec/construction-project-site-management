@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'models/tache.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/features/taches/presentation/providers/tache_controller.dart';
 import 'widgets/tache_card.dart';
-import 'add_tache_screen.dart';
 
-class TacheListScreen extends StatefulWidget {
+class TacheListScreen extends ConsumerStatefulWidget {
   final String chantierId;
   final String chantierName;
 
@@ -14,74 +14,106 @@ class TacheListScreen extends StatefulWidget {
   });
 
   @override
-  State<TacheListScreen> createState() => _TacheListScreenState();
+  ConsumerState<TacheListScreen> createState() => _TacheListScreenState();
 }
 
-class _TacheListScreenState extends State<TacheListScreen> {
-  late List<Tache> taches;
-
+class _TacheListScreenState extends ConsumerState<TacheListScreen> {
   @override
   void initState() {
     super.initState();
-    taches = [
-      Tache(
-        id: '1',
-        title: 'Fondations',
-        status: 'terminee',
-        progress: 100,
-        chantierId: widget.chantierId,
-      ),
-      Tache(
-        id: '2',
-        title: 'Élévation murs',
-        status: 'en_cours',
-        progress: 50,
-        chantierId: widget.chantierId,
-      ),
-      Tache(
-        id: '3',
-        title: 'Toiture',
-        status: 'a_faire',
-        progress: 0,
-        chantierId: widget.chantierId,
-      ),
-    ];
+    Future.microtask(() => ref.read(tacheControllerProvider.notifier).loadPhases(widget.chantierId));
   }
 
-  // 🔹 Modifier une tâche
-  void _editTache(Tache tache) {
-    final statusOptions = ['a_faire', 'en_cours', 'terminee', 'bloquee'];
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(tacheControllerProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Taches - ${widget.chantierName}')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            DropdownButtonFormField<String>(
+              value: state.selectedPhaseId,
+              decoration: const InputDecoration(labelText: 'Phase'),
+              items: state.phases
+                  .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                ref.read(tacheControllerProvider.notifier).selectPhase(widget.chantierId, value);
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: state.selectedLotId,
+              decoration: const InputDecoration(labelText: 'Lot'),
+              items: state.lots
+                  .map((l) => DropdownMenuItem(value: l.id, child: Text(l.name)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                ref.read(tacheControllerProvider.notifier).selectLot(widget.chantierId, value);
+              },
+            ),
+            const SizedBox(height: 16),
+            if (state.status == TacheStatus.loading)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else if (state.status == TacheStatus.error)
+              Expanded(child: Center(child: Text(state.error ?? 'Erreur')))
+            else if (state.taches.isEmpty)
+              const Expanded(child: Center(child: Text('Aucune tache')))
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: state.taches.length,
+                  itemBuilder: (context, index) {
+                    final tache = state.taches[index];
+                    return TacheCard(
+                      tache: tache,
+                      onTapEdit: () => _editTache(tache),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editTache(tache) {
+    final statusOptions = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
     int progressValue = tache.progress;
     String selectedStatus = tache.status;
 
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder( // 🔹 permet de rafraîchir le slider dans le popup
+        return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: Text('Modifier "${tache.title}"'),
+              title: Text('Modifier "${tache.name}"'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedStatus,
-                    decoration: const InputDecoration(labelText: "Statut"),
+                    decoration: const InputDecoration(labelText: 'Statut'),
                     items: statusOptions
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setStateDialog(() {
-                          selectedStatus = value;
-                        });
+                        setStateDialog(() => selectedStatus = value);
                       }
                     },
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Text("Progression :"),
+                      const Text('Progression :'),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Slider(
@@ -89,11 +121,9 @@ class _TacheListScreenState extends State<TacheListScreen> {
                           min: 0,
                           max: 100,
                           divisions: 20,
-                          label: "$progressValue%",
+                          label: '$progressValue%',
                           onChanged: (value) {
-                            setStateDialog(() {
-                              progressValue = value.toInt();
-                            });
+                            setStateDialog(() => progressValue = value.toInt());
                           },
                         ),
                       ),
@@ -104,91 +134,29 @@ class _TacheListScreenState extends State<TacheListScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Annuler"),
+                  child: const Text('Annuler'),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    setState(() {
-                      tache.status = selectedStatus;
-                      tache.progress = progressValue;
-                    });
+                    final lotId = ref.read(tacheControllerProvider).selectedLotId;
+                    if (lotId != null) {
+                      ref.read(tacheControllerProvider.notifier).updateStatus(
+                        widget.chantierId,
+                        lotId,
+                        tache.id,
+                        selectedStatus,
+                        progressValue,
+                      );
+                    }
                     Navigator.pop(context);
                   },
-                  child: const Text("Sauvegarder"),
+                  child: const Text('Sauvegarder'),
                 ),
               ],
             );
           },
         );
       },
-    );
-  }
-
-  // 🔹 Supprimer une tâche
-  void _deleteTache(Tache tache) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Supprimer la tâche"),
-        content: Text("Voulez-vous vraiment supprimer \"${tache.title}\" ?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Annuler"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                taches.removeWhere((element) => element.id == tache.id);
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Supprimer"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🔹 Ajouter une nouvelle tâche
-  void _addTache() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddTacheScreen(
-          chantierId: widget.chantierId,
-          onAdd: (newTache) {
-            setState(() {
-              taches.add(newTache);
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Tâches – ${widget.chantierName}")),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: taches.length,
-        itemBuilder: (context, index) {
-          return TacheCard(
-            tache: taches[index],
-            onTapEdit: () => _editTache(taches[index]),
-            onTapDelete: () => _deleteTache(taches[index]),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addTache,
-        icon: const Icon(Icons.add),
-        label: const Text("Ajouter une tâche"),
-        backgroundColor: Colors.blue,
-      ),
     );
   }
 }
