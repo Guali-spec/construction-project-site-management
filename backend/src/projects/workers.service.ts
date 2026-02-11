@@ -8,7 +8,16 @@ import { PaginationDto } from "../common/dto/pagination.dto";
 export class WorkersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(projectId: string, dto: CreateWorkerDto) {
+  private async ensureProjectInCompany(companyId: string, projectId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, companyId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!project) throw new NotFoundException("Project not found");
+  }
+
+  async create(companyId: string, projectId: string, dto: CreateWorkerDto) {
+    await this.ensureProjectInCompany(companyId, projectId);
     return this.prisma.worker.create({
       data: {
         projectId,
@@ -21,7 +30,8 @@ export class WorkersService {
     });
   }
 
-  async findAll(projectId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, projectId: string, pagination: PaginationDto) {
+    await this.ensureProjectInCompany(companyId, projectId);
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -44,16 +54,16 @@ export class WorkersService {
     };
   }
 
-  async findOne(projectId: string, workerId: string) {
+  async findOne(companyId: string, projectId: string, workerId: string) {
     const worker = await this.prisma.worker.findFirst({
-      where: { id: workerId, projectId },
+      where: { id: workerId, projectId, project: { companyId } },
     });
     if (!worker) throw new NotFoundException("Worker not found");
     return worker;
   }
 
-  async update(projectId: string, workerId: string, dto: UpdateWorkerDto) {
-    await this.findOne(projectId, workerId);
+  async update(companyId: string, projectId: string, workerId: string, dto: UpdateWorkerDto) {
+    await this.findOne(companyId, projectId, workerId);
     return this.prisma.worker.update({
       where: { id: workerId },
       data: {
@@ -66,8 +76,8 @@ export class WorkersService {
     });
   }
 
-  async remove(projectId: string, workerId: string) {
-    await this.findOne(projectId, workerId);
+  async remove(companyId: string, projectId: string, workerId: string) {
+    await this.findOne(companyId, projectId, workerId);
     const deletedAt = new Date();
     return this.prisma.$transaction([
       this.prisma.task.updateMany({

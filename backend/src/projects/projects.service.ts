@@ -9,13 +9,17 @@ import { UpdateProjectDto } from "./dto/update-project.dto";
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: string, dto: CreateProjectDto) {
+  async create(userId: string, companyId: string, dto: CreateProjectDto) {
     return this.prisma.project.create({
       data: {
         name: dto.name,
         description: dto.description,
         location: dto.location,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        budget: dto.budget ?? undefined,
         createdById: userId,
+        companyId,
         members: {
           create: {
             userId,
@@ -27,12 +31,16 @@ export class ProjectsService {
     });
   }
 
-  async findAllForUser(userId: string, pagination: PaginationDto) {
+  async findAllForUser(userId: string, companyId: string, pagination: PaginationDto) {
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const where = { members: { some: { userId, deletedAt: null } }, deletedAt: null };
+    const where = {
+      companyId,
+      members: { some: { userId, deletedAt: null } },
+      deletedAt: null,
+    };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.project.findMany({
@@ -50,9 +58,14 @@ export class ProjectsService {
     };
   }
 
-  async findOneForUser(userId: string, projectId: string) {
+  async findOneForUser(userId: string, companyId: string, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, deletedAt: null, members: { some: { userId, deletedAt: null } } },
+      where: {
+        id: projectId,
+        companyId,
+        deletedAt: null,
+        members: { some: { userId, deletedAt: null } },
+      },
       include: { members: { where: { deletedAt: null } } },
     });
 
@@ -60,9 +73,9 @@ export class ProjectsService {
     return project;
   }
 
-  async update(userId: string, projectId: string, dto: UpdateProjectDto) {
+  async update(userId: string, companyId: string, projectId: string, dto: UpdateProjectDto) {
     const membership = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId, deletedAt: null },
+      where: { projectId, userId, deletedAt: null, project: { companyId } },
     });
 
     if (!membership) throw new NotFoundException("Project not found");
@@ -77,13 +90,16 @@ export class ProjectsService {
         name: dto.name,
         description: dto.description,
         location: dto.location,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        budget: dto.budget ?? undefined,
       },
     });
   }
 
-  async archive(userId: string, projectId: string) {
+  async archive(userId: string, companyId: string, projectId: string) {
     const membership = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId, deletedAt: null },
+      where: { projectId, userId, deletedAt: null, project: { companyId } },
     });
 
     if (!membership) throw new NotFoundException("Project not found");

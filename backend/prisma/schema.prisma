@@ -13,6 +13,7 @@ datasource db {
  * Superviseur, Comptable, Consultant. :contentReference[oaicite:2]{index=2}
  */
 enum GlobalRole {
+  PENDING
   SUPER_ADMIN
   ADMIN_ENTREPRISE
   CHEF_PROJET
@@ -50,6 +51,31 @@ enum TaskPriority {
   CRITICAL
 }
 
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReportType {
+  PROJECT_SUMMARY
+  FINANCIAL
+  ATTENDANCE
+  PROGRESS
+}
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  projects  Project[]
+
+  @@map("companies")
+}
 
 model User {
   id           String     @id @default(uuid())
@@ -59,19 +85,26 @@ model User {
   lastName     String
   phone        String?
   avatar       String?
-  role         GlobalRole @default(SUPERVISEUR)
+  role         GlobalRole @default(PENDING)
+  requestedRole GlobalRole?
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
+  companyId    String?
 
   // Relations
   refreshTokens RefreshToken[]
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   createdProjects Project[]       @relation("ProjectCreatedBy")
   memberships     ProjectMember[]
   activityLogs    ActivityLog[]
+  createdExpenses Expense[]
+  createdPhotos   ProgressPhoto[]
+  createdReports  Report[]
 
   @@index([role])
+  @@index([companyId])
   @@index([deletedAt])
   @@map("users")
 }
@@ -88,6 +121,8 @@ model Project {
 
   createdById String
   createdBy   User          @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  companyId   String?
+  company     Company?      @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -97,10 +132,16 @@ model Project {
   members     ProjectMember[]
   phases      Phase[]
   workers     Worker[]
+  attendances Attendance[]
+  materials   Material[]
+  expenses    Expense[]
+  photos      ProgressPhoto[]
+  reports     Report[]
   activityLogs ActivityLog[]
 
   @@index([status])
   @@index([createdById])
+  @@index([companyId])
   @@index([deletedAt])
   @@map("projects")
 }
@@ -184,6 +225,7 @@ model Task {
 
   lot             Lot          @relation(fields: [lotId], references: [id], onDelete: Cascade)
   assignedWorker  Worker?      @relation(fields: [assignedWorkerId], references: [id], onDelete: SetNull)
+  photos          ProgressPhoto[]
 
   @@index([lotId])
   @@index([assignedWorkerId])
@@ -206,10 +248,113 @@ model Worker {
 
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks      Task[]
+  attendances Attendance[]
 
   @@index([projectId])
   @@index([deletedAt])
   @@map("workers")
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  projectId String
+  workerId  String
+  date      DateTime
+  present   Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([workerId])
+  @@index([date])
+  @@index([deletedAt])
+  @@map("attendances")
+}
+
+model Material {
+  id          String   @id @default(uuid())
+  projectId   String
+  name        String
+  unit        String?
+  quantity    Int      @default(0)
+  unitCost    Decimal? @db.Decimal(12, 2)
+  totalCost   Decimal? @db.Decimal(14, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([deletedAt])
+  @@map("materials")
+}
+
+model Expense {
+  id          String        @id @default(uuid())
+  projectId   String
+  amount      Decimal       @db.Decimal(14, 2)
+  category    String
+  description String?
+  status      ExpenseStatus @default(PENDING)
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("expenses")
+}
+
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  projectId String
+  taskId    String?
+  url       String
+  caption   String?
+  createdById String
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("progress_photos")
+}
+
+model Report {
+  id        String     @id @default(uuid())
+  projectId String
+  type      ReportType
+  payload   Json?
+  createdById String
+  createdAt DateTime   @default(now())
+  deletedAt DateTime?
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User       @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([type])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("reports")
 }
 
 model ActivityLog {

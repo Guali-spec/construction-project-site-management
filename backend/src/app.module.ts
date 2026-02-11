@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
@@ -11,10 +11,14 @@ import { AppService } from "./app.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProjectsModule } from "./projects/projects.module";
+import { AdminModule } from "./admin/admin.module";
 
 import { RolesGuard } from "./auth/guards/roles.guard";
 import { ActivityLogInterceptor } from "./activity-log/activity-log.interceptor";
 import { envValidationSchema } from "./config/env.validation";
+import { CompanyScopeGuard } from "./auth/guards/company-scope.guard";
+import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { PendingGuard } from "./auth/guards/pending.guard";
 
 
 @Module({
@@ -47,6 +51,7 @@ import { envValidationSchema } from "./config/env.validation";
     PrismaModule,
     AuthModule,
     ProjectsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
@@ -57,11 +62,23 @@ import { envValidationSchema } from "./config/env.validation";
     },
     {
       provide: APP_GUARD,
+      useClass: PendingGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CompanyScopeGuard,
+    },
+    {
+      provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
     {
       provide: APP_INTERCEPTOR,
       useClass: ActivityLogInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
   ],
 })

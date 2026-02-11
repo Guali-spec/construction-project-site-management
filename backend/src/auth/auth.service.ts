@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
@@ -7,7 +7,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import type { SignOptions } from "jsonwebtoken";
 
-type JwtPayload = { sub: string; email: string; role: string };
+type JwtPayload = { sub: string; email: string; role: string; companyId: string | null };
 
 @Injectable()
 export class AuthService {
@@ -57,11 +57,22 @@ export class AuthService {
   }
 
 
+  private async getDefaultCompanyId(): Promise<string> {
+    const existing = await this.prisma.company.findUnique({ where: { slug: "default" } });
+    if (existing) return existing.id;
+
+    const created = await this.prisma.company.create({
+      data: { name: "Default", slug: "default" },
+    });
+    return created.id;
+  }
+
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new BadRequestException("Email already in use");
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const companyId = await this.getDefaultCompanyId();
 
     const user = await this.prisma.user.create({
       data: {
@@ -69,10 +80,12 @@ export class AuthService {
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
+        companyId,
+        requestedRole: dto.requestedRole ?? null,
       },
     });
 
-    return this.issueTokens(user.id, user.email, user.role);
+    return this.issueTokens(user.id, user.email, user.role, user.companyId ?? null);
   }
 
   async login(dto: LoginDto) {
@@ -82,11 +95,11 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException("Invalid credentials");
 
-    return this.issueTokens(user.id, user.email, user.role);
+    return this.issueTokens(user.id, user.email, user.role, user.companyId ?? null);
   }
 
-  private async issueTokens(userId: string, email: string, role: string) {
-    const payload: JwtPayload = { sub: userId, email, role };
+  private async issueTokens(userId: string, email: string, role: string, companyId: string | null) {
+    const payload: JwtPayload = { sub: userId, email, role, companyId };
 
     const accessToken = await this.signAccessToken(payload);
 
@@ -143,7 +156,12 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException("User not found");
 
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role };
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId ?? null,
+    };
 
     const newAccessToken = await this.signAccessToken(payload);
 
@@ -187,5 +205,26 @@ export class AuthService {
     });
 
     return { success: true };
+  }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        requestedRole: true,
+        phone: true,
+        avatar: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!user) throw new NotFoundException("User not found");
+    return user;
   }
 }

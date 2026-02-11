@@ -8,15 +8,15 @@ type MemberRole = ProjectMemberRole;
 export class ProjectsMembersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async countOwners(projectId: string): Promise<number> {
+  private async countOwners(projectId: string, companyId: string): Promise<number> {
     return this.prisma.projectMember.count({
-      where: { projectId, role: "OWNER", deletedAt: null },
+      where: { projectId, role: "OWNER", deletedAt: null, project: { companyId } },
     });
   }
 
-  private async getActorRole(userId: string, projectId: string): Promise<MemberRole> {
+  private async getActorRole(userId: string, companyId: string, projectId: string): Promise<MemberRole> {
     const m = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId, deletedAt: null },
+      where: { projectId, userId, deletedAt: null, project: { companyId } },
       select: { role: true },
     });
     if (!m) throw new NotFoundException("Project not found");
@@ -25,11 +25,12 @@ export class ProjectsMembersService {
 
   async addMember(
     actorId: string,
+    companyId: string,
     projectId: string,
     email: string,
     role: MemberRole,
   ) {
-    const actorRole = await this.getActorRole(actorId, projectId);
+    const actorRole = await this.getActorRole(actorId, companyId, projectId);
 
     if (role === "OWNER") {
       throw new ForbiddenException("Cannot add member as OWNER");
@@ -42,15 +43,16 @@ export class ProjectsMembersService {
 
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new NotFoundException("User not found");
+    if (user.companyId !== companyId) throw new BadRequestException("User not in same company");
 
     // Eviter doublon
     const existing = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: user.id, deletedAt: null },
+      where: { projectId, userId: user.id, deletedAt: null, project: { companyId } },
     });
     if (existing) throw new BadRequestException("User already member");
 
     const softDeleted = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: user.id, deletedAt: { not: null } },
+      where: { projectId, userId: user.id, deletedAt: { not: null }, project: { companyId } },
       orderBy: { deletedAt: "desc" },
     });
 
@@ -68,18 +70,19 @@ export class ProjectsMembersService {
 
   async changeRole(
     actorId: string,
+    companyId: string,
     projectId: string,
     targetUserId: string,
     role: MemberRole,
   ) {
-    const actorRole = await this.getActorRole(actorId, projectId);
+    const actorRole = await this.getActorRole(actorId, companyId, projectId);
 
     if (role === "OWNER") {
       throw new ForbiddenException("Cannot set role to OWNER");
     }
 
     const target = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: targetUserId, deletedAt: null },
+      where: { projectId, userId: targetUserId, deletedAt: null, project: { companyId } },
       select: { role: true },
     });
     if (!target) throw new NotFoundException("Member not found");
@@ -88,7 +91,7 @@ export class ProjectsMembersService {
       if (actorRole !== "OWNER") {
         throw new ForbiddenException("Only OWNER can change another OWNER");
       }
-      const ownersCount = await this.countOwners(projectId);
+      const ownersCount = await this.countOwners(projectId, companyId);
       if (ownersCount <= 1) {
         throw new ForbiddenException("Cannot demote the last OWNER");
       }
@@ -100,7 +103,7 @@ export class ProjectsMembersService {
     }
 
     const member = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: targetUserId, deletedAt: null },
+      where: { projectId, userId: targetUserId, deletedAt: null, project: { companyId } },
       select: { id: true },
     });
     if (!member) throw new NotFoundException("Member not found");
@@ -111,19 +114,19 @@ export class ProjectsMembersService {
     });
   }
 
-  async removeMember(actorId: string, projectId: string, targetUserId: string) {
+  async removeMember(actorId: string, companyId: string, projectId: string, targetUserId: string) {
     // seul OWNER a accès à cette route (guard), mais on renforce ici aussi
-    const actorRole = await this.getActorRole(actorId, projectId);
+    const actorRole = await this.getActorRole(actorId, companyId, projectId);
     if (actorRole !== "OWNER") throw new ForbiddenException("Not allowed");
 
     const target = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: targetUserId, deletedAt: null },
+      where: { projectId, userId: targetUserId, deletedAt: null, project: { companyId } },
       select: { role: true, userId: true },
     });
     if (!target) throw new NotFoundException("Member not found");
 
     if (target.role === "OWNER") {
-      const ownersCount = await this.countOwners(projectId);
+      const ownersCount = await this.countOwners(projectId, companyId);
       if (ownersCount <= 1) {
         throw new ForbiddenException("Cannot remove the last OWNER");
       }
@@ -131,7 +134,7 @@ export class ProjectsMembersService {
     if (target.userId === actorId) throw new ForbiddenException("Owner cannot remove himself");
 
     const member = await this.prisma.projectMember.findFirst({
-      where: { projectId, userId: targetUserId, deletedAt: null },
+      where: { projectId, userId: targetUserId, deletedAt: null, project: { companyId } },
       select: { id: true },
     });
     if (!member) throw new NotFoundException("Member not found");

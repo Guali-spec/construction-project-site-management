@@ -12,6 +12,18 @@ import { TasksController } from "./tasks.controller";
 import { TasksService } from "./tasks.service";
 import { WorkersController } from "./workers.controller";
 import { WorkersService } from "./workers.service";
+import { MaterialsController } from "./materials.controller";
+import { MaterialsService } from "./materials.service";
+import { ExpensesController } from "./expenses.controller";
+import { ExpensesService } from "./expenses.service";
+import { AttendancesController } from "./attendances.controller";
+import { AttendancesService } from "./attendances.service";
+import { PhotosController } from "./photos.controller";
+import { PhotosService } from "./photos.service";
+import { ReportsController } from "./reports.controller";
+import { ReportsService } from "./reports.service";
+import { DashboardController } from "./dashboard.controller";
+import { DashboardService } from "./dashboard.service";
 
 @Module({
   controllers: [
@@ -21,6 +33,12 @@ import { WorkersService } from "./workers.service";
     LotsController,
     TasksController,
     WorkersController,
+    MaterialsController,
+    ExpensesController,
+    AttendancesController,
+    PhotosController,
+    ReportsController,
+    DashboardController,
   ],
   providers: [
     ProjectsService,
@@ -29,6 +47,12 @@ import { WorkersService } from "./workers.service";
     LotsService,
     TasksService,
     WorkersService,
+    MaterialsService,
+    ExpensesService,
+    AttendancesService,
+    PhotosService,
+    ReportsService,
+    DashboardService,
     ProjectRoleGuard,
   ],
 })

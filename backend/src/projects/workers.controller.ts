@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import type { Request } from "express";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { ProjectMemberRole } from "@prisma/client";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -8,6 +9,7 @@ import { CreateWorkerDto } from "./dto/create-worker.dto";
 import { UpdateWorkerDto } from "./dto/update-worker.dto";
 import { WorkersService } from "./workers.service";
 import { PaginationDto } from "../common/dto/pagination.dto";
+import { Roles } from "../auth/decorators/roles.decorator";
 
 const ALL_PROJECT_ROLES = [
   ProjectMemberRole.OWNER,
@@ -24,14 +26,17 @@ const ALL_PROJECT_ROLES = [
 export class WorkersController {
   constructor(private readonly workers: WorkersService) {}
 
-  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER)
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
   @Post()
   @ApiCreatedResponse({ description: "Worker created" })
-  create(@Param("projectId") projectId: string, @Body() dto: CreateWorkerDto) {
-    return this.workers.create(projectId, dto);
+  create(@Req() req: Request, @Param("projectId") projectId: string, @Body() dto: CreateWorkerDto) {
+    const user = req.user as any;
+    return this.workers.create(user.companyId, projectId, dto);
   }
 
   @ProjectRoles(...ALL_PROJECT_ROLES)
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
   @Get()
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
@@ -39,35 +44,47 @@ export class WorkersController {
     description: "Paginated workers list",
     schema: { example: { items: [], meta: { page: 1, limit: 20, total: 0 } } },
   })
-  findAll(@Param("projectId") projectId: string, @Query() pagination: PaginationDto) {
-    return this.workers.findAll(projectId, pagination);
+  findAll(@Req() req: Request, @Param("projectId") projectId: string, @Query() pagination: PaginationDto) {
+    const user = req.user as any;
+    return this.workers.findAll(user.companyId, projectId, pagination);
   }
 
   @ProjectRoles(...ALL_PROJECT_ROLES)
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
   @ApiParam({ name: "workerId", type: String })
   @Get(":workerId")
   @ApiOkResponse({ description: "Worker details" })
-  findOne(@Param("projectId") projectId: string, @Param("workerId") workerId: string) {
-    return this.workers.findOne(projectId, workerId);
+  findOne(
+    @Req() req: Request,
+    @Param("projectId") projectId: string,
+    @Param("workerId") workerId: string,
+  ) {
+    const user = req.user as any;
+    return this.workers.findOne(user.companyId, projectId, workerId);
   }
 
-  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER)
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
   @ApiParam({ name: "workerId", type: String })
   @Patch(":workerId")
   @ApiOkResponse({ description: "Worker updated" })
   update(
+    @Req() req: Request,
     @Param("projectId") projectId: string,
     @Param("workerId") workerId: string,
     @Body() dto: UpdateWorkerDto,
   ) {
-    return this.workers.update(projectId, workerId, dto);
+    const user = req.user as any;
+    return this.workers.update(user.companyId, projectId, workerId, dto);
   }
 
   @ApiParam({ name: "workerId", type: String })
-  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER)
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
   @Delete(":workerId")
   @ApiOkResponse({ description: "Worker deleted (soft)" })
-  remove(@Param("projectId") projectId: string, @Param("workerId") workerId: string) {
-    return this.workers.remove(projectId, workerId);
+  remove(@Req() req: Request, @Param("projectId") projectId: string, @Param("workerId") workerId: string) {
+    const user = req.user as any;
+    return this.workers.remove(user.companyId, projectId, workerId);
   }
 }

@@ -33,6 +33,11 @@ export class PrismaService
       "Lot",
       "Task",
       "Worker",
+      "Attendance",
+      "Material",
+      "Expense",
+      "ProgressPhoto",
+      "Report",
       "ActivityLog",
       "RefreshToken",
     ]);

@@ -39,6 +39,7 @@ export class ProjectRoleGuard implements CanActivate {
         projectId,
         userId: user.sub,
         deletedAt: null,
+        ...(user.role === "SUPER_ADMIN" ? {} : { project: { companyId: user.companyId } }),
       },
       select: { role: true },
     });

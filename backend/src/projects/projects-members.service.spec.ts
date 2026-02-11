@@ -18,14 +18,14 @@ describe("ProjectsMembersService", () => {
   let service: ProjectsMembersService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     service = new ProjectsMembersService(prisma);
   });
 
   it("blocks adding member as OWNER", async () => {
     prisma.projectMember.findFirst.mockResolvedValueOnce({ role: "OWNER" });
     await expect(
-      service.addMember("actor", "project", "test@example.com", "OWNER"),
+      service.addMember("actor", "company", "project", "test@example.com", "OWNER"),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -37,7 +37,7 @@ describe("ProjectsMembersService", () => {
     prisma.projectMember.count.mockResolvedValueOnce(1);
 
     await expect(
-      service.changeRole("actor", "project", "target", "MANAGER"),
+      service.changeRole("actor", "company", "project", "target", "MANAGER"),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -49,7 +49,7 @@ describe("ProjectsMembersService", () => {
     prisma.projectMember.count.mockResolvedValueOnce(1);
 
     await expect(
-      service.removeMember("actor", "project", "target"),
+      service.removeMember("actor", "company", "project", "target"),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -59,17 +59,17 @@ describe("ProjectsMembersService", () => {
       .mockResolvedValueOnce(null) // existing active
       .mockResolvedValueOnce({ id: "soft-1" }); // soft-deleted
 
-    prisma.user.findUnique.mockResolvedValueOnce({ id: "u1" });
+    prisma.user.findUnique.mockResolvedValueOnce({ id: "u1", companyId: "company" });
     prisma.projectMember.update.mockResolvedValueOnce({ id: "soft-1" });
 
-    const result = await service.addMember("actor", "project", "a@b.com", "WORKER");
+    const result = await service.addMember("actor", "company", "project", "a@b.com", "WORKER");
     expect(result).toEqual({ id: "soft-1" });
   });
 
   it("throws if actor is not a member", async () => {
     prisma.projectMember.findFirst.mockResolvedValueOnce(null);
     await expect(
-      service.addMember("actor", "project", "a@b.com", "WORKER"),
+      service.addMember("actor", "company", "project", "a@b.com", "WORKER"),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

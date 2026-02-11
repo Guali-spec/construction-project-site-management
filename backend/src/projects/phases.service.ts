@@ -8,7 +8,16 @@ import { PaginationDto } from "../common/dto/pagination.dto";
 export class PhasesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(projectId: string, dto: CreatePhaseDto) {
+  private async ensureProjectInCompany(companyId: string, projectId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, companyId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!project) throw new NotFoundException("Project not found");
+  }
+
+  async create(companyId: string, projectId: string, dto: CreatePhaseDto) {
+    await this.ensureProjectInCompany(companyId, projectId);
     return this.prisma.phase.create({
       data: {
         projectId,
@@ -21,7 +30,8 @@ export class PhasesService {
     });
   }
 
-  async findAll(projectId: string, pagination: PaginationDto) {
+  async findAll(companyId: string, projectId: string, pagination: PaginationDto) {
+    await this.ensureProjectInCompany(companyId, projectId);
     const page = pagination.page ?? 1;
     const limit = pagination.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -44,16 +54,16 @@ export class PhasesService {
     };
   }
 
-  async findOne(projectId: string, phaseId: string) {
+  async findOne(companyId: string, projectId: string, phaseId: string) {
     const phase = await this.prisma.phase.findFirst({
-      where: { id: phaseId, projectId },
+      where: { id: phaseId, projectId, project: { companyId } },
     });
     if (!phase) throw new NotFoundException("Phase not found");
     return phase;
   }
 
-  async update(projectId: string, phaseId: string, dto: UpdatePhaseDto) {
-    await this.findOne(projectId, phaseId);
+  async update(companyId: string, projectId: string, phaseId: string, dto: UpdatePhaseDto) {
+    await this.findOne(companyId, projectId, phaseId);
     return this.prisma.phase.update({
       where: { id: phaseId },
       data: {
@@ -66,16 +76,16 @@ export class PhasesService {
     });
   }
 
-  async remove(projectId: string, phaseId: string) {
-    await this.findOne(projectId, phaseId);
+  async remove(companyId: string, projectId: string, phaseId: string) {
+    await this.findOne(companyId, projectId, phaseId);
     const deletedAt = new Date();
     return this.prisma.$transaction([
       this.prisma.task.updateMany({
-        where: { lot: { phaseId } },
+        where: { lot: { phaseId, phase: { project: { companyId } } } },
         data: { deletedAt },
       }),
       this.prisma.lot.updateMany({
-        where: { phaseId },
+        where: { phaseId, phase: { project: { companyId } } },
         data: { deletedAt },
       }),
       this.prisma.phase.update({

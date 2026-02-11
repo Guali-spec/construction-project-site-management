@@ -24,19 +24,19 @@ describe("ProjectsService", () => {
 
   it("returns paginated projects with meta", async () => {
     prisma.$transaction.mockResolvedValueOnce([[{ id: "p1" }], 1]);
-    const result = await service.findAllForUser("u1", { page: 1, limit: 20 });
+    const result = await service.findAllForUser("u1", "c1", { page: 1, limit: 20 });
     expect(result).toEqual({ items: [{ id: "p1" }], meta: { page: 1, limit: 20, total: 1 } });
   });
 
   it("throws NotFound when project is not visible", async () => {
     prisma.project.findFirst.mockResolvedValueOnce(null);
-    await expect(service.findOneForUser("u1", "p1")).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findOneForUser("u1", "c1", "p1")).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it("blocks update if role is insufficient", async () => {
     prisma.projectMember.findFirst.mockResolvedValueOnce({ role: "SUPERVISOR" });
     await expect(
-      service.update("u1", "p1", { name: "X" }),
+      service.update("u1", "c1", "p1", { name: "X" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

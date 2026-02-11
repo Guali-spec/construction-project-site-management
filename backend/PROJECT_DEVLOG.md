@@ -1619,3 +1619,239 @@ Remplacer `uuid` par `crypto.randomUUID()` (Node 18+), évite ESM dans Jest.
 
 **Action :**
 - npm install (pour mettre à jour le lockfile si nécessaire)
+
+---
+
+### [2026-02-09] Session — Connexion Frontend ? Backend
+
+**Objectif :**
+Brancher le frontend Next.js sur l’API NestJS (auth + projets).
+
+**Changements frontend :**
+- Base URL API sans `/api`
+- Auth réelle (login/register/refresh + /auth/me)
+- Suppression des mocks projets
+- Adaptation des types (UUID, enums, pagination)
+- Gestion des statuts projets (PLANNED/ACTIVE/ON_HOLD/COMPLETED/ARCHIVED)
+
+**Changements backend :**
+- `/auth/me` retourne désormais le profil utilisateur complet
+
+**Fichiers modifiés (principaux) :**
+- `frontend/src/services/api-client.ts`
+- `frontend/src/modules/auth/auth.service.ts`
+- `frontend/src/modules/projects/projects.service.ts`
+- `frontend/src/hooks/useAuth.ts`
+- `frontend/src/hooks/useProjects.ts`
+- `frontend/src/modules/projects/ProjectsList.tsx`
+- `backend/src/auth/auth.service.ts`
+- `backend/src/auth/auth.controller.ts`
+
+---
+
+### [2026-02-09] Session — Phase C1 (Admin Companies + Scoped Users + Versioning + Errors)
+
+**Objectif :**
+Mettre en place le socle multi-tenancy côté API avec versioning, format d’erreurs standard, guard PENDING et endpoints admin.
+
+**Changements majeurs :**
+- Préfixe global API : `/api/v1`
+- Format d’erreurs standardisé `{ code, message, details, path, timestamp }`
+- Guard `PENDING` (deny-all sauf routes auth autorisées)
+- Endpoints admin companies + users pending/company-scoped
+- companyId injecté dans JWT et scoping appliqué aux modules projets
+
+**Nouveaux fichiers :**
+- `backend/src/common/filters/http-exception.filter.ts`
+- `backend/src/auth/decorators/allow-pending.decorator.ts`
+- `backend/src/auth/guards/pending.guard.ts`
+- `backend/src/admin/admin.module.ts`
+- `backend/src/admin/admin.service.ts`
+- `backend/src/admin/companies.controller.ts`
+- `backend/src/admin/users.controller.ts`
+- `backend/src/admin/dto/create-company.dto.ts`
+- `backend/src/admin/dto/update-company.dto.ts`
+- `backend/src/admin/admin.service.spec.ts`
+
+**Fichiers modifiés (principaux) :**
+- `backend/prisma/schema.prisma` (GlobalRole + PENDING)
+- `backend/src/main.ts` (prefix + swagger)
+- `backend/src/app.module.ts` (guards + filter + admin module)
+- `backend/src/auth/auth.controller.ts`
+- `backend/src/auth/auth.service.ts`
+- `backend/src/auth/strategies/jwt.strategy.ts`
+- `backend/src/auth/guards/project-role.guard.ts`
+- `backend/src/projects/*` (controllers + services scoping)
+- `frontend/src/services/api-client.ts` (base URL /api/v1)
+
+**Commandes :**
+- npx prisma migrate dev --name add_pending_role
+- npx prisma generate
+- npm test (backend)
+
+---
+
+### [2026-02-09] Session — Phase C2 (Governance rôles globaux)
+
+**Objectif :**
+Mettre en place l’attribution des rôles globaux avec matrice d’autorisation, audit et tests.
+
+**Nouveaux endpoints :**
+- `PATCH /api/v1/admin/users/:id/role`
+
+**Décisions clés :**
+- Matrice d’assignation respectée (SUPER_ADMIN, ADMIN_ENTREPRISE, CHEF_PROJET)
+- Interdiction de changer son propre rôle
+- Interdiction inter-company pour non SUPER_ADMIN
+- Audit log systématique (ActivityLog)
+
+**Fichiers créés :**
+- `backend/src/admin/dto/update-user-role.dto.ts`
+
+**Fichiers modifiés (principaux) :**
+- `backend/src/admin/admin.service.ts`
+- `backend/src/admin/users.controller.ts`
+- `backend/src/admin/admin.service.spec.ts`
+
+**Tests ajoutés :**
+- Matrice d’assignation
+- Self-change forbidden
+- Cross-company forbidden
+- SUPER_ADMIN allowed
+
+---
+
+### [2026-02-09] Session — Phase C3 (Core modules API scoped + RBAC + dashboard + reports)
+
+**Objectif :**
+Activer les modules metier principaux (presences, materiaux, depenses, photos, rapports) avec scoping companyId et acces par role chantier.
+
+**Decisions cles :**
+- Supervisors peuvent gerer les ouvriers (creation/modif/suppression).
+- Ajout d’un endpoint dedie pour mettre a jour le statut/progression d’une tache (supervisor autorise).
+- Reporting exportable JSON/CSV, logge en base (`reports`) pour audit.
+- Dashboard projet minimal (compteurs + total depenses).
+
+**Fichiers crees :**
+- `backend/src/projects/reports.controller.ts`
+- `backend/src/projects/reports.service.ts`
+- `backend/src/projects/dashboard.controller.ts`
+- `backend/src/projects/dashboard.service.ts`
+- `backend/src/projects/dto/export-report.dto.ts`
+- `backend/prisma/migrations/20260209152000_add_core_modules/migration.sql`
+
+**Fichiers modifies (principaux) :**
+- `backend/src/projects/projects.module.ts` (ajout controllers/services core)
+- `backend/src/projects/tasks.controller.ts` (PATCH status)
+- `backend/src/projects/tasks.service.ts` (updateStatus)
+- `backend/src/projects/workers.controller.ts` (SUPERVISOR autorise)
+- `backend/src/projects/dto/create-material.dto.ts`
+- `backend/src/projects/dto/update-material.dto.ts`
+- `backend/src/projects/dto/create-expense.dto.ts`
+- `backend/src/prisma/prisma.service.ts` (soft delete sur nouveaux modeles)
+- `backend/src/app.module.ts` (cleanup import)
+
+**Endpoints ajoutes :**
+- `GET /api/v1/projects/:projectId/dashboard`
+- `GET /api/v1/projects/:projectId/reports`
+- `GET /api/v1/projects/:projectId/reports/export?type=...&format=json|csv`
+- `PATCH /api/v1/projects/:projectId/lots/:lotId/tasks/:taskId/status`
+
+**Migration a executer :**
+- `npx prisma migrate dev --name add_core_modules`
+- `npx prisma generate`
+
+**Notes :**
+- La migration est fournie en SQL (creation des tables `attendances`, `materials`, `expenses`, `progress_photos`, `reports` + enums `ExpenseStatus`, `ReportType`).
+- Toutes les nouvelles ressources sont scopees par `companyId`.
+
+---
+
+### [2026-02-09] Session — Swagger enrichi (Phase C3)
+
+**Objectif :**
+Documenter proprement les nouveaux endpoints (materials, expenses, attendances, photos, reports, dashboard) avec reponses et exemples.
+
+**Fichiers modifies :**
+- `backend/src/projects/materials.controller.ts`
+- `backend/src/projects/expenses.controller.ts`
+- `backend/src/projects/attendances.controller.ts`
+- `backend/src/projects/photos.controller.ts`
+- `backend/src/projects/reports.controller.ts`
+- `backend/src/projects/dashboard.controller.ts`
+
+**Changements :**
+- Ajout `ApiCreatedResponse` sur les creations.
+- Ajout `ApiOkResponse` sur les listes/updates/deletes.
+- Exemples pagination `{ items, meta }`.
+
+---
+
+### [2026-02-09] Session — Alignement RBAC code vs matrice (Phase C3)
+
+**Objectif :**
+Aligner les decorators/guards sur la matrice routes ? roles et corriger les incoherences mineures.
+
+**Fichiers modifies :**
+- `backend/src/projects/projects.controller.ts` (suppression doublon decorators)
+- `backend/src/projects/projects-members.controller.ts` (ProjectRoles alignes sur enum)
+
+**Notes :**
+- Aucun ecart majeur detecte entre la matrice et les routes existantes.
+
+---
+
+### [2026-02-09] Session — Consultant (lecture globale chantier)
+
+**Objectif :**
+Appliquer le profil Consultant en lecture globale chantier (lecture projets/phases/lots/tasks/photos + rapports/dashboard) et exclure les modules sensibles (workers, attendances, expenses, materials, membres).
+
+**Fichiers modifies :**
+- `backend/src/projects/projects.controller.ts`
+- `backend/src/projects/projects-members.controller.ts`
+- `backend/src/projects/phases.controller.ts`
+- `backend/src/projects/lots.controller.ts`
+- `backend/src/projects/tasks.controller.ts`
+- `backend/src/projects/workers.controller.ts`
+- `backend/src/projects/materials.controller.ts`
+- `backend/src/projects/photos.controller.ts`
+- `backend/src/projects/reports.controller.ts`
+- `backend/src/projects/dashboard.controller.ts`
+- `backend/ROUTES_RBAC.md`
+
+**Notes :**
+- Le Consultant reste soumis au ProjectRoleGuard (doit etre membre du projet).
+- Pas d’acces aux donnees RH/financieres (workers, attendances, expenses, materials).
+
+---
+
+### [2026-02-09] Session — RequestedRole (inscription)
+
+**Objectif :**
+Permettre a l'utilisateur de demander un role (hors SUPER_ADMIN / ADMIN_ENTREPRISE) et rafraichir l'interface automatiquement apres validation.
+
+**Backend :**
+- Ajout champ `requestedRole` sur `User`.
+- `register` accepte `requestedRole` (validation stricte).
+- `listPendingUsers` expose `requestedRole`.
+- `assignUserRole` efface `requestedRole` apres attribution.
+
+**Frontend :**
+- Formulaire register avec select de role demande.
+- Page pending affiche le role demande.
+- Hook auth poll toutes les 30s pour rafraichir le role.
+
+**Fichiers modifies (principaux) :**
+- `backend/prisma/schema.prisma`
+- `backend/src/auth/dto/register.dto.ts`
+- `backend/src/auth/auth.service.ts`
+- `backend/src/admin/admin.service.ts`
+- `frontend/src/modules/auth/RegisterForm.tsx`
+- `frontend/src/modules/auth/auth.service.ts`
+- `frontend/app/pending/page.tsx`
+- `frontend/src/hooks/useAuth.ts`
+- `frontend/src/types/index.ts`
+
+**Migration a executer :**
+- `npx prisma migrate dev --name add_requested_role`
+- `npx prisma generate`

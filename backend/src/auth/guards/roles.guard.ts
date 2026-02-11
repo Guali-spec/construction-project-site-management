@@ -17,6 +17,12 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
+    // JwtAuthGuard is applied on all routes that use @Roles,
+    // but it runs after global guards. If user is missing here,
+    // let the JwtAuthGuard handle the 401.
+    if (!user) {
+      return true;
+    }
 
     return requiredRoles.includes(user.role);
   }

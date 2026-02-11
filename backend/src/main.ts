@@ -4,6 +4,8 @@ import { AppModule } from "./app.module";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import helmet from "helmet";
 import { Logger } from "nestjs-pino";
+import * as express from "express";
+import { join } from "path";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +19,8 @@ async function bootstrap() {
     }),
   );
 
+  app.use("/uploads", express.static(join(process.cwd(), "uploads")));
+
   const corsOriginsRaw = process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:5173";
   const corsOrigins = corsOriginsRaw
     .split(",")
@@ -29,6 +33,8 @@ async function bootstrap() {
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
   });
+
+  app.setGlobalPrefix("api/v1");
 
   const config = new DocumentBuilder()
     .setTitle("Construction Project & Site Management API")
@@ -46,7 +52,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("docs", app, document);
+  SwaggerModule.setup("docs", app, document, { useGlobalPrefix: true });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

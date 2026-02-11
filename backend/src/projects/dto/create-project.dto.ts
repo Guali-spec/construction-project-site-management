@@ -1,4 +1,5 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsDateString, IsNumber, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateProjectDto {
   @IsString()
@@ -11,4 +12,17 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  budget?: number;
 }
