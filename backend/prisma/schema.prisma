@@ -70,6 +70,7 @@ model User {
   createdProjects Project[]       @relation("ProjectCreatedBy")
   memberships     ProjectMember[]
   activityLogs    ActivityLog[]
+  createdPhotos   ProgressPhoto[] @relation("PhotoCreatedBy")
 
   @@index([role])
   @@index([deletedAt])
@@ -97,6 +98,8 @@ model Project {
   members     ProjectMember[]
   phases      Phase[]
   workers     Worker[]
+  attendances Attendance[]
+  photos      ProgressPhoto[]
   activityLogs ActivityLog[]
 
   @@index([status])
@@ -184,6 +187,7 @@ model Task {
 
   lot             Lot          @relation(fields: [lotId], references: [id], onDelete: Cascade)
   assignedWorker  Worker?      @relation(fields: [assignedWorkerId], references: [id], onDelete: SetNull)
+  photos          ProgressPhoto[]
 
   @@index([lotId])
   @@index([assignedWorkerId])
@@ -206,10 +210,52 @@ model Worker {
 
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks      Task[]
+  attendances Attendance[]
 
   @@index([projectId])
   @@index([deletedAt])
   @@map("workers")
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  projectId String
+  workerId  String
+  checkIn   DateTime @default(now())
+  checkOut  DateTime?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  worker    Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([workerId])
+  @@index([deletedAt])
+  @@map("attendances")
+}
+
+model ProgressPhoto {
+  id          String   @id @default(uuid())
+  projectId   String
+  taskId      String?
+  url         String
+  caption     String?
+  createdById String
+  createdAt   DateTime @default(now())
+  deletedAt   DateTime?
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdBy User     @relation("PhotoCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("progress_photos")
 }
 
 model ActivityLog {
