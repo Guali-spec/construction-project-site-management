@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,8 +18,18 @@ export default function LoginForm() {
     setError('');
     setIsLoading(true);
     const result = await login(email, password);
-    if (result.success) router.push('/dashboard');
-    else setError(result.error || 'Erreur de connexion');
+    if (result.success) {
+      const role = result.data?.role;
+      if (role === 'PENDING') {
+        router.push('/pending');
+      } else if (role === 'SUPER_ADMIN' || role === 'ADMIN_ENTREPRISE') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    } else {
+      setError(result.error || 'Erreur de connexion');
+    }
     setIsLoading(false);
   };
 
@@ -32,7 +42,7 @@ export default function LoginForm() {
               <Building2 size={28} />
             </div>
             <h1 className="text-xl font-bold text-slate-800">SiteManager</h1>
-            <p className="text-slate-500 text-sm mt-1">Connexion à votre espace chantier</p>
+            <p className="text-slate-500 text-sm mt-1">Connexion a votre espace chantier</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-5">
@@ -77,7 +87,10 @@ export default function LoginForm() {
               {isLoading ? 'Connexion...' : 'Se connecter'}
             </button>
             <p className="text-center text-xs text-slate-500">
-              Démo : <code className="bg-slate-100 px-1 rounded">admin@test.com</code> / <code className="bg-slate-100 px-1 rounded">password123</code>
+              Utilisez vos identifiants d’acces pour vous connecter.
+            </p>
+            <p className="text-center text-xs text-slate-500">
+              Pas de compte ? <a className="text-amber-600 hover:underline" href="/register">Creer un compte</a>
             </p>
           </form>
         </div>

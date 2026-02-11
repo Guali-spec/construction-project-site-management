@@ -1,61 +1,77 @@
-import apiClient from '@/services/api-client';
-import { LoginCredentials, AuthResponse, User } from '@/types';
+import apiClient from "@/services/api-client";
+import { LoginCredentials, AuthResponse, User } from "@/types";
+import { decodeJwt } from "@/lib/jwt";
+import { clearCookie, setCookie } from "@/lib/auth-cookies";
 
-/** Auth : mock pour démo. Remplacer par appels backend (POST /auth/login, etc.) lors de l’intégration. */
 class AuthService {
   private isBrowser() {
-    return typeof window !== 'undefined';
+    return typeof window !== "undefined";
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    // Pour la démo, simule une réponse API
-    const mockResponse: AuthResponse = {
-      token: 'mock-jwt-token-for-demo',
-      user: {
-        id: 1,
-        email: credentials.email,
-        firstName: 'Pauline',
-        lastName: 'KABORE',
-        role: 'admin',
-        phone: '+226 70 00 00 00',
-        isActive: true,
-      },
-    };
+    const response = await apiClient.post<AuthResponse>("/auth/login", credentials);
+    const auth = response.data;
 
-    // Simuler un délai réseau
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // En production, utiliser :
-    // const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-    
-    // Sauvegarder pour la session (localStorage + cookie pour middleware)
     if (this.isBrowser()) {
-      localStorage.setItem('auth_token', mockResponse.token);
-      localStorage.setItem('user', JSON.stringify(mockResponse.user));
-      document.cookie = `auth_token=${mockResponse.token}; path=/; max-age=86400; SameSite=Lax`;
+      localStorage.setItem("access_token", auth.accessToken);
+      localStorage.setItem("refresh_token", auth.refreshToken);
+      setCookie("auth_token", auth.accessToken);
+      const payload = decodeJwt(auth.accessToken);
+      if (payload?.role) setCookie("user_role", payload.role);
     }
 
-    return mockResponse;
+    return auth;
+  }
+
+  async register(payload: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    requestedRole?: string;
+  }): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>("/auth/register", payload);
+    const auth = response.data;
+    if (this.isBrowser()) {
+      localStorage.setItem("access_token", auth.accessToken);
+      localStorage.setItem("refresh_token", auth.refreshToken);
+      setCookie("auth_token", auth.accessToken);
+      const decoded = decodeJwt(auth.accessToken);
+      if (decoded?.role) setCookie("user_role", decoded.role);
+    }
+    return auth;
+  }
+
+  async fetchCurrentUser(): Promise<User> {
+    const response = await apiClient.get<User>("/auth/me");
+    const user = response.data;
+    if (this.isBrowser()) {
+      localStorage.setItem("user", JSON.stringify(user));
+      if (user?.role) setCookie("user_role", user.role);
+    }
+    return user;
   }
 
   logout(): void {
     if (this.isBrowser()) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
-      document.cookie = 'auth_token=; path=/; max-age=0';
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      clearCookie("auth_token");
+      clearCookie("user_role");
     }
   }
 
   getCurrentUser(): User | null {
     if (!this.isBrowser()) return null;
     
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem("user");
     return userStr ? JSON.parse(userStr) : null;
   }
 
   isAuthenticated(): boolean {
     if (!this.isBrowser()) return false;
-    return !!localStorage.getItem('auth_token');
+    return !!localStorage.getItem("access_token");
   }
 }
 

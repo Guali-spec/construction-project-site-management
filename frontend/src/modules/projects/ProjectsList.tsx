@@ -1,28 +1,29 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useProjects } from '@/hooks/useProjects';
-import { Building2, Calendar, MapPin, DollarSign, CheckCircle, Clock, PlayCircle, AlertCircle } from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import { useProjects } from "@/hooks/useProjects";
+import { Building2, MapPin, CheckCircle, Clock, PlayCircle, PauseCircle, Archive } from "lucide-react";
 
 const statusConfig: Record<string, { icon: typeof PlayCircle; label: string; className: string }> = {
-  active: { icon: PlayCircle, label: 'En cours', className: 'bg-emerald-100 text-emerald-800' },
-  completed: { icon: CheckCircle, label: 'Terminé', className: 'bg-sky-100 text-sky-800' },
-  planned: { icon: Clock, label: 'Planifié', className: 'bg-amber-100 text-amber-800' },
-  cancelled: { icon: AlertCircle, label: 'Annulé', className: 'bg-slate-100 text-slate-600' },
+  PLANNED: { icon: Clock, label: "Planifie", className: "bg-amber-100 text-amber-800" },
+  ACTIVE: { icon: PlayCircle, label: "En cours", className: "bg-emerald-100 text-emerald-800" },
+  ON_HOLD: { icon: PauseCircle, label: "En pause", className: "bg-orange-100 text-orange-800" },
+  COMPLETED: { icon: CheckCircle, label: "Termine", className: "bg-sky-100 text-sky-800" },
+  ARCHIVED: { icon: Archive, label: "Archive", className: "bg-slate-100 text-slate-600" },
 };
 
 export default function ProjectsList() {
   const { projects, isLoading, error } = useProjects();
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filtered = statusFilter === 'all' ? projects : projects.filter((p) => p.status === statusFilter);
+  const filtered = statusFilter === "all" ? projects : projects.filter((p) => p.status === statusFilter);
   const stats = {
     total: projects.length,
-    active: projects.filter((p) => p.status === 'active').length,
-    planned: projects.filter((p) => p.status === 'planned').length,
-    completed: projects.filter((p) => p.status === 'completed').length,
-    totalBudget: projects.reduce((sum, p) => sum + p.budget, 0),
+    active: projects.filter((p) => p.status === "ACTIVE").length,
+    planned: projects.filter((p) => p.status === "PLANNED").length,
+    completed: projects.filter((p) => p.status === "COMPLETED").length,
+    totalBudget: projects.reduce((sum, p) => sum + (p.budget ?? 0), 0),
   };
 
   if (isLoading) {
@@ -45,7 +46,7 @@ export default function ProjectsList() {
           onClick={() => window.location.reload()}
           className="mt-2 text-sm font-medium text-red-600 hover:underline"
         >
-          Réessayer
+          Reessayer
         </button>
       </div>
     );
@@ -56,7 +57,9 @@ export default function ProjectsList() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Chantiers</h1>
-          <p className="text-slate-600 text-sm mt-0.5">{projects.length} chantier{projects.length !== 1 ? 's' : ''} au total</p>
+          <p className="text-slate-600 text-sm mt-0.5">
+            {projects.length} chantier{projects.length !== 1 ? "s" : ""} au total
+          </p>
         </div>
         <Link
           href="/projects/new"
@@ -78,10 +81,10 @@ export default function ProjectsList() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-slate-500 text-sm font-medium">Budget total</p>
-          <p className="text-xl font-bold text-slate-800 mt-0.5">{stats.totalBudget.toLocaleString('fr-FR')} €</p>
+          <p className="text-xl font-bold text-slate-800 mt-0.5">{stats.totalBudget.toLocaleString("fr-FR")} EUR</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <p className="text-slate-500 text-sm font-medium">Terminés</p>
+          <p className="text-slate-500 text-sm font-medium">Termines</p>
           <p className="text-xl font-bold text-sky-600 mt-0.5">{stats.completed}</p>
         </div>
       </div>
@@ -89,17 +92,19 @@ export default function ProjectsList() {
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="p-3 border-b border-slate-100 flex flex-wrap gap-2">
           {[
-            { key: 'all', label: `Tous (${stats.total})` },
-            { key: 'active', label: `En cours (${stats.active})` },
-            { key: 'planned', label: `Planifiés (${stats.planned})` },
-            { key: 'completed', label: `Terminés (${stats.completed})` },
+            { key: "all", label: `Tous (${stats.total})` },
+            { key: "ACTIVE", label: `En cours (${stats.active})` },
+            { key: "PLANNED", label: `Planifies (${stats.planned})` },
+            { key: "COMPLETED", label: `Termines (${stats.completed})` },
           ].map(({ key, label }) => (
             <button
               key={key}
               type="button"
               onClick={() => setStatusFilter(key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                statusFilter === key ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                statusFilter === key
+                  ? "bg-amber-600 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {label}
@@ -121,26 +126,32 @@ export default function ProjectsList() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((project) => {
-                const config = statusConfig[project.status] ?? statusConfig.planned;
+                const config = statusConfig[project.status] ?? statusConfig.PLANNED;
                 const Icon = config.icon;
+                const startDate = project.startDate ? new Date(project.startDate).toLocaleDateString("fr-FR") : "-";
+                const endDate = project.endDate ? new Date(project.endDate).toLocaleDateString("fr-FR") : "-";
                 return (
                   <tr key={project.id} className="hover:bg-slate-50/50">
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-800">{project.name}</p>
-                      <p className="text-sm text-slate-500 truncate max-w-xs">{project.description}</p>
+                      <p className="text-sm text-slate-500 truncate max-w-xs">
+                        {project.description ?? "-"}
+                      </p>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 text-sm text-slate-600">
                         <MapPin size={14} className="text-slate-400" />
-                        {project.location}
+                        {project.location ?? "-"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
-                      <span>{new Date(project.startDate).toLocaleDateString('fr-FR')}</span>
-                      <span className="text-slate-400 mx-1">→</span>
-                      <span>{new Date(project.endDate).toLocaleDateString('fr-FR')}</span>
+                      <span>{startDate}</span>
+                      <span className="text-slate-400 mx-1">-></span>
+                      <span>{endDate}</span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-800">{project.budget.toLocaleString('fr-FR')} €</td>
+                    <td className="px-4 py-3 font-medium text-slate-800">
+                      {(project.budget ?? 0).toLocaleString("fr-FR")} EUR
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
                         <Icon size={12} />
@@ -153,7 +164,7 @@ export default function ProjectsList() {
                           Voir
                         </Link>
                         <Link href={`/projects/${project.id}/edit`} className="text-sm text-slate-600 hover:text-slate-800">
-                          Éditer
+                          Editer
                         </Link>
                       </div>
                     </td>
@@ -169,7 +180,7 @@ export default function ProjectsList() {
             <Building2 className="mx-auto h-12 w-12 text-slate-300" />
             <h3 className="mt-3 text-sm font-medium text-slate-700">Aucun chantier</h3>
             <p className="mt-1 text-sm text-slate-500">
-              {statusFilter === 'all' ? 'Créez un premier chantier.' : `Aucun chantier avec ce filtre.`}
+              {statusFilter === "all" ? "Creez un premier chantier." : "Aucun chantier avec ce filtre."}
             </p>
           </div>
         )}

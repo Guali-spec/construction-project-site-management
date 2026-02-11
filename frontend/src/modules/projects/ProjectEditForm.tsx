@@ -1,15 +1,16 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Building2 } from 'lucide-react';
-import { useProjects } from '@/hooks/useProjects';
+import { useParams, useRouter } from 'next/navigation';
+import { projectsService } from '@/modules/projects/projects.service';
 
-export default function ProjectCreateWizard() {
+export default function ProjectEditForm() {
+  const params = useParams();
   const router = useRouter();
-  const { createProject } = useProjects();
-  const [submitting, setSubmitting] = useState(false);
+  const projectId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
@@ -21,44 +22,80 @@ export default function ProjectCreateWizard() {
   });
 
   useEffect(() => {
-    setError('');
-  }, [form.name, form.description, form.location, form.startDate, form.endDate, form.budget]);
+    const load = async () => {
+      if (!projectId) return;
+      try {
+        setLoading(true);
+        const p = await projectsService.getProjectById(projectId);
+        setForm({
+          name: p.name || '',
+          description: p.description || '',
+          location: p.location || '',
+          startDate: p.startDate ? p.startDate.slice(0, 10) : '',
+          endDate: p.endDate ? p.endDate.slice(0, 10) : '',
+          budget: p.budget != null ? String(p.budget) : '',
+        });
+        setError('');
+      } catch {
+        setError('Erreur de chargement du chantier');
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [projectId]);
 
   const onChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const onSubmit = async () => {
+    if (!projectId) return;
     if (!form.name.trim()) {
       setError('Le nom du chantier est obligatoire.');
       return;
     }
-    setSubmitting(true);
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      location: form.location.trim() || undefined,
-      startDate: form.startDate || undefined,
-      endDate: form.endDate || undefined,
-      budget: form.budget ? Number(form.budget) : undefined,
-    };
-    const res = await createProject(payload);
-    setSubmitting(false);
-    if (!res.success) {
-      setError(res.error || 'Erreur de creation');
-      return;
+    setSaving(true);
+    try {
+      await projectsService.updateProject(projectId, {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        location: form.location.trim() || undefined,
+        startDate: form.startDate || undefined,
+        endDate: form.endDate || undefined,
+        budget: form.budget ? Number(form.budget) : undefined,
+      });
+      router.push(`/projects/${projectId}`);
+    } catch {
+      setError('Erreur de mise a jour');
+    } finally {
+      setSaving(false);
     }
-    router.push('/projects');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-3 text-slate-600 text-sm">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Nouveau chantier</h1>
-          <p className="text-slate-600 mt-0.5">Creation rapide (nom, localisation, dates, budget).</p>
+          <h1 className="text-2xl font-bold text-slate-800">Editer chantier</h1>
+          <p className="text-slate-600 mt-0.5">Modification des informations principales.</p>
         </div>
-        <Link href="/projects" className="text-sm font-medium text-slate-600 hover:text-slate-800">Retour aux chantiers</Link>
+        <div className="flex gap-2">
+          <Link href={`/projects/${projectId}`} className="px-4 py-2 rounded-lg font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 text-sm">
+            Annuler
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
@@ -69,7 +106,6 @@ export default function ProjectCreateWizard() {
               type="text"
               value={form.name}
               onChange={(e) => onChange('name', e.target.value)}
-              placeholder="Ex. Residence Les Jardins"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm"
             />
           </div>
@@ -78,7 +114,6 @@ export default function ProjectCreateWizard() {
             <textarea
               value={form.description}
               onChange={(e) => onChange('description', e.target.value)}
-              placeholder="Description courte"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm"
               rows={3}
             />
@@ -89,7 +124,6 @@ export default function ProjectCreateWizard() {
               type="text"
               value={form.location}
               onChange={(e) => onChange('location', e.target.value)}
-              placeholder="Ville ou adresse"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm"
             />
           </div>
@@ -99,7 +133,6 @@ export default function ProjectCreateWizard() {
               type="number"
               value={form.budget}
               onChange={(e) => onChange('budget', e.target.value)}
-              placeholder="0"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-800 text-sm"
             />
           </div>
@@ -126,15 +159,13 @@ export default function ProjectCreateWizard() {
         {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
         <div className="flex justify-end gap-2 mt-6">
-          <Link href="/projects" className="px-4 py-2 rounded-lg font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 text-sm">Annuler</Link>
           <button
             type="button"
             onClick={onSubmit}
-            disabled={submitting}
-            className="px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 text-sm inline-flex items-center gap-2 disabled:opacity-60"
+            disabled={saving}
+            className="px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 text-sm disabled:opacity-60"
           >
-            <Building2 size={16} />
-            {submitting ? 'Creation...' : 'Creer le chantier'}
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
       </div>
