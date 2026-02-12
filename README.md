@@ -90,6 +90,14 @@ construction-project-site-management/
 
 # Lancer le projet en local
 
+## Cloner le projet
+```bash
+git clone https://github.com/Guali-spec/construction-project-site-management.git
+cd construction-project-site-management
+```
+
+
+
 ## 0) Base de données (PostgreSQL)
 ```bash
 # À la racine
