@@ -1,73 +1,187 @@
-# Construction Project & Site Management
+# BuildTrack -- Construction Project & Site Management
 
-Plateforme web et mobile de gestion de chantiers de construction, conçue pour assurer le suivi des tâches, des équipes, des coûts et de l’avancement des travaux en temps réel.
+Plateforme web et mobile de gestion de chantiers (admin + terrain) :
+suivi des tâches, équipes, dépenses, photos, avancement et rapports.
+L'objectif est d'améliorer la coordination chantier/bureau et la
+traçabilité opérationnelle.
 
-Ce projet est développé dans un cadre académique en suivant des pratiques professionnelles de développement logiciel.
+------------------------------------------------------------------------
 
----
+## Membres de l'équipe
 
-## 🎯 Objectifs du projet
+-   **GUISSOU Ali** -- Backend + Base de données
+-   **KABORE Pauline** -- Mobile
+-   **OUEDRAOGO Moumouni** -- Frontend Web
 
-L’application vise à :
-- Centraliser la gestion des chantiers de construction
-- Faciliter le suivi opérationnel sur le terrain
-- Améliorer la communication entre le terrain et le bureau
-- Réduire les retards et dépassements budgétaires
-- Fournir des tableaux de bord et rapports d’aide à la décision
-- Assurer la traçabilité complète des opérations
+------------------------------------------------------------------------
 
----
+## Description technique
 
-## 🧱 Architecture globale
+### Architecture
 
-Le système est composé de trois parties principales :
+Architecture client-serveur en 3 couches :
 
-- **Backend** : API REST sécurisée assurant la logique métier et l’accès aux données
-- **Frontend Web** : Interface d’administration et de pilotage des chantiers
-- **Application Mobile** : Application terrain avec support du mode hors connexion
+-   Backend (API REST) : NestJS + Prisma + PostgreSQL
+-   Frontend Web : Next.js (admin/pilotage)
+-   Mobile : Flutter (terrain)
 
-Architecture de type **client–serveur**, avec séparation claire des responsabilités.
+Fonctionnalités techniques clés :
 
----
+-   Authentification JWT (access + refresh)
+-   RBAC global + permissions par chantier
+-   Multi-entreprises (Company) avec scoping par `companyId`
+-   Documentation API via Swagger / OpenAPI
 
-## 🛠️ Stack technologique
+------------------------------------------------------------------------
+
+## Stack technologique
 
 ### Backend
-- Node.js
-- NestJS
-- TypeScript
-- PostgreSQL
-- JWT (authentification)
-- Swagger / OpenAPI
-- Docker
+
+-   Node.js
+-   NestJS
+-   TypeScript
+-   Prisma
+-   PostgreSQL (Docker)
+-   JWT
+-   Swagger
 
 ### Frontend Web
-- React
-- Next.js
-- TypeScript
-- TailwindCSS
-- React Query / SWR
-- Chart.js / Recharts
 
-### Application Mobile
-- Flutter
-- Dart
-- Hive / SQLite (mode offline)
+-   Next.js 15
+-   React 18
+-   TypeScript
+-   Tailwind CSS
 
----
+### Mobile
 
-## 📁 Structure du dépôt
+-   Flutter / Dart
+-   Riverpod
+-   GoRouter
+-   Dio
+-   Secure Storage
 
-```text
+------------------------------------------------------------------------
+
+## Structure du dépôt
+```
 construction-project-site-management/
-│
-├── backend/        # API REST et logique métier
-├── frontend/       # Application web (admin & pilotage)
-├── mobile/         # Application mobile (terrain)
-├── docs/           # Documentation technique et diagrammes
-├── .github/        # Templates GitHub (issues, PR, workflows)
-│
-├── CONTRIBUTING.md
+├── backend/              # API REST + logique métier
+├── frontend/             # Web admin/pilotage
+├── mobile/               # Application mobile terrain
+├── docs/                 # Documentation (si présent)
+├── .github/
 ├── docker-compose.yml
-├── .gitignore
 └── README.md
+```
+
+
+------------------------------------------------------------------------
+
+## Prérequis
+
+-   Node.js 18+ (recommandé 20+)
+-   npm (ou pnpm / yarn)
+-   Docker Desktop (pour PostgreSQL)
+-   Flutter SDK (stable)
+-   Android Studio / Emulator (optionnel)
+
+------------------------------------------------------------------------
+
+# Lancer le projet en local
+
+## 0) Base de données (PostgreSQL)
+```bash
+# À la racine
+docker compose up -d
+```
+
+DB exposée sur localhost:5434 (voir docker-compose.yml).
+
+## 1) Backend (API)
+```
+cd backend
+npm install
+
+# Variables d'environnement
+# Copier et adapter : .env.example -> .env
+
+# Prisma
+npx prisma generate
+npx prisma migrate dev
+
+# Lancer l'API
+npm run start:dev
+```
+API : http://localhost:3001/api/v1
+Swagger : http://localhost:3001/api/v1/docs
+
+## 2) Frontend Web
+
+```
+cd frontend/app
+npm install
+npm run dev
+
+```
+Web : http://localhost:3000
+
+## 3) Mobile (Flutter)
+
+```
+cd mobile/app
+flutter pub get
+
+# Web (tests rapides)
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3001/api/v1
+
+# Android emulator
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:3001/api/v1
+
+```
+10.0.2.2 = localhost Android emulator.
+
+## Vérifs Flutter (si besoin)
+
+```
+flutter doctor
+flutter doctor --android-licenses
+
+```
+
+# Variables d'environnement
+
+## Backend (.env)
+
+-   DATABASE_URL
+-   JWT_ACCESS_SECRET
+-   JWT_REFRESH_SECRET
+-   PORT=3001
+
+## Frontend (.env)
+
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1
+
+## Mobile
+
+--dart-define=API_BASE_URL=...
+
+------------------------------------------------------------------------
+
+# Fonctionnalités principales (V1)
+
+-   Authentification JWT + refresh
+-   RBAC global
+-   Gestion des chantiers
+-   Gestion des tâches
+-   Gestion des ressources et photos
+-   Gestion des dépenses
+-   Rapports
+-   Dashboard synthétique
+
+------------------------------------------------------------------------
+
+# Licence
+
+Projet académique à usage pédagogique.
+
