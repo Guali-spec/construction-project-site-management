@@ -6,8 +6,8 @@ const fontSans = Manrope({ subsets: ["latin"], variable: "--font-sans", display:
 const fontDisplay = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "SiteManager - Gestion et pilotage de chantier",
-  description: "Interface web de gestion et pilotage : donnees centralisees, tableaux de bord analytiques, reporting automatise et tracabilite complete.",
+  title: "BuildTrack - Gestion et pilotage de chantier",
+  description: "Interface web BuildTrack : donnees centralisees, tableaux de bord analytiques, reporting automatise et tracabilite complete.",
 };
 
 export default function RootLayout({

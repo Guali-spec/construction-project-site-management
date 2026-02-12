@@ -3,13 +3,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import ProjectSelector from '@/components/projects/ProjectSelector';
 import { useProjectSelection } from '@/hooks/useProjectSelection';
-import { listPhases } from '@/modules/suivi/phases.service';
-import { listLots } from '@/modules/tasks/lots.service';
+import { createPhase, listPhases } from '@/modules/suivi/phases.service';
+import { createLot, listLots } from '@/modules/tasks/lots.service';
 import { createTask, listTasks, updateTaskStatus } from '@/modules/tasks/tasks.service';
 import { LotItem, PhaseItem, TaskItem } from '@/types';
 
 const STATUS_OPTIONS = ['TODO', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
 const PRIORITY_OPTIONS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const STATUS_LABELS: Record<string, string> = {
+  TODO: 'À faire',
+  IN_PROGRESS: 'En cours',
+  DONE: 'Terminé',
+  BLOCKED: 'Bloqué',
+};
+const PRIORITY_LABELS: Record<string, string> = {
+  LOW: 'Faible',
+  MEDIUM: 'Moyenne',
+  HIGH: 'Haute',
+  CRITICAL: 'Critique',
+};
 
 export default function TasksContent() {
   const { selectedId } = useProjectSelection();
@@ -28,65 +40,55 @@ export default function TasksContent() {
   });
 
   useEffect(() => {
-    const loadPhases = async () => {
+    const ensureStructureAndLoad = async () => {
       if (!selectedId) return;
       try {
         setLoading(true);
-        const res = await listPhases(selectedId, 1, 100);
-        setPhases(res.items || []);
-        setPhaseId('');
-        setLotId('');
-        setTasks([]);
         setError('');
+        let phasesRes = await listPhases(selectedId, 1, 100);
+        let phaseItems = phasesRes.items || [];
+        if (phaseItems.length === 0) {
+          await createPhase(selectedId, { name: 'Phase principale', order: 1 });
+          phasesRes = await listPhases(selectedId, 1, 100);
+          phaseItems = phasesRes.items || [];
+        }
+        setPhases(phaseItems);
+        const currentPhaseId = phaseItems[0]?.id ?? '';
+        setPhaseId(currentPhaseId);
+        if (!currentPhaseId) {
+          setLotId('');
+          setTasks([]);
+          return;
+        }
+        let lotsRes = await listLots(selectedId, currentPhaseId, 1, 100);
+        let lotItems = lotsRes.items || [];
+        if (lotItems.length === 0) {
+          await createLot(selectedId, currentPhaseId, { name: 'Lot principal', order: 1 });
+          lotsRes = await listLots(selectedId, currentPhaseId, 1, 100);
+          lotItems = lotsRes.items || [];
+        }
+        setLots(lotItems);
+        const currentLotId = lotItems[0]?.id ?? '';
+        setLotId(currentLotId);
+        if (!currentLotId) {
+          setTasks([]);
+          return;
+        }
+        const tasksRes = await listTasks(selectedId, currentLotId, 1, 100);
+        setTasks(tasksRes.items || []);
       } catch {
-        setError('Erreur de chargement des phases');
+        setError('Erreur de chargement des tâches');
       } finally {
         setLoading(false);
       }
     };
-    void loadPhases();
+    void ensureStructureAndLoad();
   }, [selectedId]);
-
-  useEffect(() => {
-    const loadLots = async () => {
-      if (!selectedId || !phaseId) return;
-      try {
-        setLoading(true);
-        const res = await listLots(selectedId, phaseId, 1, 100);
-        setLots(res.items || []);
-        setLotId('');
-        setTasks([]);
-        setError('');
-      } catch {
-        setError('Erreur de chargement des lots');
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadLots();
-  }, [selectedId, phaseId]);
-
-  useEffect(() => {
-    const loadTasks = async () => {
-      if (!selectedId || !lotId) return;
-      try {
-        setLoading(true);
-        const res = await listTasks(selectedId, lotId, 1, 100);
-        setTasks(res.items || []);
-        setError('');
-      } catch {
-        setError('Erreur de chargement des taches');
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadTasks();
-  }, [selectedId, lotId]);
 
   const onCreateTask = async () => {
     if (!selectedId || !lotId) return;
     if (!form.name.trim()) {
-      setError('Le nom de la tache est obligatoire.');
+      setError('Le nom de la tâche est obligatoire.');
       return;
     }
     try {
@@ -101,7 +103,7 @@ export default function TasksContent() {
       setForm({ name: '', description: '', priority: 'MEDIUM' });
       setError('');
     } catch {
-      setError('Erreur de creation de tache');
+      setError('Erreur de création de tâche');
     } finally {
       setLoading(false);
     }
@@ -116,7 +118,7 @@ export default function TasksContent() {
       const res = await listTasks(selectedId, lotId, 1, 100);
       setTasks(res.items || []);
     } catch {
-      setError('Erreur de mise a jour du statut');
+      setError('Erreur de mise à jour du statut');
     } finally {
       setLoading(false);
     }
@@ -127,44 +129,14 @@ export default function TasksContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Taches</h1>
-        <p className="text-slate-600 mt-0.5">Selectionner un chantier, une phase et un lot.</p>
+        <h1 className="text-2xl font-bold text-slate-800">Tâches</h1>
+        <p className="text-slate-600 mt-0.5">Les lots et phases sont gérés automatiquement.</p>
       </div>
 
-      <ProjectSelector label="Chantier (taches)" />
-
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Phase</label>
-          <select
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-sm"
-            value={phaseId}
-            onChange={(e) => setPhaseId(e.target.value)}
-          >
-            <option value="">Selectionner une phase</option>
-            {phases.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Lot</label>
-          <select
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-sm"
-            value={lotId}
-            onChange={(e) => setLotId(e.target.value)}
-            disabled={!phaseId}
-          >
-            <option value="">Selectionner un lot</option>
-            {lots.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <ProjectSelector label="Chantier (tâches)" />
 
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Creer une tache</h2>
+        <h2 className="text-lg font-semibold text-slate-800 mb-4">Créer une tâche</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
@@ -176,14 +148,14 @@ export default function TasksContent() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Priorite</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Priorité</label>
             <select
               className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-sm"
               value={form.priority}
               onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
             >
               {PRIORITY_OPTIONS.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>{PRIORITY_LABELS[p] ?? p}</option>
               ))}
             </select>
           </div>
@@ -204,21 +176,21 @@ export default function TasksContent() {
             disabled={!lotId || loading}
             className="px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 text-sm disabled:opacity-60"
           >
-            Creer
+            Créer
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <h2 className="text-lg font-semibold text-slate-800 p-4 border-b border-slate-100">Liste des taches</h2>
+        <h2 className="text-lg font-semibold text-slate-800 p-4 border-b border-slate-100">Liste des tâches</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-slate-50/80 text-left text-slate-500 border-b border-slate-100">
                 <th className="px-4 py-3 font-semibold">Nom</th>
                 <th className="px-4 py-3 font-semibold">Statut</th>
-                <th className="px-4 py-3 font-semibold">Progress</th>
-                <th className="px-4 py-3 font-semibold">Priorite</th>
+                <th className="px-4 py-3 font-semibold">Progression</th>
+                <th className="px-4 py-3 font-semibold">Priorité</th>
                 <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
@@ -226,9 +198,9 @@ export default function TasksContent() {
               {orderedTasks.map((t) => (
                 <tr key={t.id}>
                   <td className="px-4 py-3 text-slate-800">{t.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{t.status}</td>
+                  <td className="px-4 py-3 text-slate-600">{STATUS_LABELS[t.status] ?? t.status}</td>
                   <td className="px-4 py-3 text-slate-600">{t.progress ?? 0}%</td>
-                  <td className="px-4 py-3 text-slate-600">{t.priority}</td>
+                  <td className="px-4 py-3 text-slate-600">{PRIORITY_LABELS[t.priority] ?? t.priority}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {STATUS_OPTIONS.map((s) => (
@@ -238,7 +210,7 @@ export default function TasksContent() {
                           onClick={() => void onSetStatus(t.id, s)}
                           className="px-2 py-1 rounded text-xs bg-slate-100 hover:bg-slate-200 text-slate-700"
                         >
-                          {s}
+                          {STATUS_LABELS[s] ?? s}
                         </button>
                       ))}
                     </div>
@@ -246,7 +218,7 @@ export default function TasksContent() {
                 </tr>
               ))}
               {orderedTasks.length === 0 && !loading && (
-                <tr><td className="px-4 py-6 text-center text-slate-500" colSpan={5}>Aucune tache</td></tr>
+                <tr><td className="px-4 py-6 text-center text-slate-500" colSpan={5}>Aucune tâche</td></tr>
               )}
               {loading && (
                 <tr><td className="px-4 py-6 text-center text-slate-500" colSpan={5}>Chargement...</td></tr>

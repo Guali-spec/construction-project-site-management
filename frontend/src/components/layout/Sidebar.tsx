@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Building2, TrendingUp, Users, DollarSign, FileBarChart, Settings, LogOut, CheckSquare, Image as ImageIcon } from 'lucide-react';
+import BuildTrackLogo from '@/components/BuildTrackLogo';
 import { useAuth } from '@/hooks/useAuth';
 
 const navItems = [
-  { key: 'dashboard', name: 'Dashboard', icon: Home, href: '/dashboard' },
+  { key: 'dashboard', name: 'Tableau de bord', icon: Home, href: '/dashboard' },
   { key: 'projects', name: 'Chantiers', icon: Building2, href: '/projects' },
-  { key: 'tasks', name: 'Taches', icon: CheckSquare, href: '/tasks' },
+  { key: 'tasks', name: 'Tâches', icon: CheckSquare, href: '/tasks' },
   { key: 'photos', name: 'Photos', icon: ImageIcon, href: '/photos' },
   { key: 'suivi', name: "Suivi d'avancement", icon: TrendingUp, href: '/suivi' },
   { key: 'resources', name: 'Ressources', icon: Users, href: '/resources' },
@@ -18,10 +19,10 @@ const navItems = [
 ];
 
 const roleNavKeys: Record<string, string[]> = {
-  SUPER_ADMIN: ['dashboard', 'projects', 'tasks', 'photos', 'suivi', 'resources', 'finance', 'reports', 'admin'],
-  ADMIN_ENTREPRISE: ['dashboard', 'projects', 'tasks', 'photos', 'suivi', 'resources', 'finance', 'reports', 'admin'],
-  CHEF_PROJET: ['dashboard', 'projects', 'tasks', 'photos', 'suivi', 'resources', 'reports'],
-  SUPERVISEUR: ['dashboard', 'projects', 'tasks', 'photos', 'suivi', 'resources', 'reports'],
+  SUPER_ADMIN: ['dashboard', 'projects', 'tasks', 'photos', 'resources', 'finance', 'reports', 'admin'],
+  ADMIN_ENTREPRISE: ['dashboard', 'projects', 'tasks', 'photos', 'resources', 'finance', 'reports', 'admin'],
+  CHEF_PROJET: ['dashboard', 'projects', 'tasks', 'photos', 'resources', 'reports'],
+  SUPERVISEUR: ['projects', 'tasks', 'photos', 'suivi', 'resources', 'finance', 'reports'],
   COMPTABLE: ['dashboard', 'projects', 'tasks', 'photos', 'finance', 'reports'],
   CONSULTANT: ['dashboard', 'projects', 'tasks', 'photos', 'reports'],
   PENDING: [],
@@ -46,10 +47,12 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-950 text-white min-h-screen flex flex-col shrink-0 border-r border-slate-800/80">
       <div className="p-6">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold">S</div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold">
+            <BuildTrackLogo className="w-6 h-6" />
+          </div>
           <div>
-            <h1 className="text-lg font-semibold">SiteManager</h1>
+            <h1 className="text-lg font-semibold">BuildTrack</h1>
             <p className="text-xs text-slate-400">Pilotage chantier</p>
           </div>
         </div>
@@ -94,7 +97,7 @@ export default function Sidebar() {
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-red-600 text-slate-200 hover:text-white rounded-xl transition-colors text-sm font-medium"
         >
           <LogOut size={16} />
-          Deconnexion
+          Déconnexion
         </button>
       </div>
     </aside>

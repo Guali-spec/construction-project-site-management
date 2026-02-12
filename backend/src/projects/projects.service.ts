@@ -1,13 +1,22 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { ProjectMemberRole, ProjectStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
+import { UpdateProjectStatusDto } from "./dto/update-project-status.dto";
 
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async computeProgress(projectId: string) {
+    const avg = await this.prisma.task.aggregate({
+      where: { lot: { phase: { projectId } }, deletedAt: null },
+      _avg: { progress: true },
+    });
+    return Math.round(avg._avg.progress ?? 0);
+  }
 
   async create(userId: string, companyId: string, dto: CreateProjectDto) {
     return this.prisma.project.create({
@@ -53,7 +62,9 @@ export class ProjectsService {
     ]);
 
     return {
-      items,
+      items: await Promise.all(
+        items.map(async (p) => ({ ...p, progress: await this.computeProgress(p.id) })),
+      ),
       meta: { page, limit, total },
     };
   }
@@ -70,7 +81,8 @@ export class ProjectsService {
     });
 
     if (!project) throw new NotFoundException("Project not found");
-    return project;
+    const progress = await this.computeProgress(project.id);
+    return { ...project, progress };
   }
 
   async update(userId: string, companyId: string, projectId: string, dto: UpdateProjectDto) {
@@ -94,6 +106,27 @@ export class ProjectsService {
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         budget: dto.budget ?? undefined,
       },
+    });
+  }
+
+  async updateStatus(userId: string, companyId: string, projectId: string, dto: UpdateProjectStatusDto) {
+    const membership = await this.prisma.projectMember.findFirst({
+      where: { projectId, userId, deletedAt: null, project: { companyId } },
+    });
+
+    if (!membership) throw new NotFoundException("Project not found");
+    const allowedRoles: ProjectMemberRole[] = [ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER];
+    if (!allowedRoles.includes(membership.role)) {
+      throw new ForbiddenException("Not allowed");
+    }
+
+    if (dto.status !== ProjectStatus.COMPLETED) {
+      throw new BadRequestException("Only COMPLETED status is allowed");
+    }
+
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: { status: ProjectStatus.COMPLETED },
     });
   }
 

@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_svg: ^2.0.10
 
   # Icones iOS
   cupertino_icons: ^1.0.8
@@ -21,6 +22,8 @@ dependencies:
 
   # Secure storage
   flutter_secure_storage: ^9.0.0
+  image_picker: ^1.1.2
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -30,3 +33,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/buildtrack-logo.svg

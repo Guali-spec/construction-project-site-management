@@ -47,15 +47,27 @@ class PhotosController extends StateNotifier<PhotosState> {
     }
   }
 
-  Future<void> create(String projectId, String url, String? caption) async {
+  Future<void> upload({
+    required String projectId,
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+    String? taskId,
+  }) async {
     state = state.copyWith(status: PhotosStatus.loading, error: null);
     try {
       final api = PhotosApi(_ref.read(dioClientProvider));
-      await api.createPhoto(projectId, url, caption);
+      await api.uploadPhoto(
+        projectId: projectId,
+        bytes: bytes,
+        filename: filename,
+        caption: caption,
+        taskId: taskId,
+      );
       final items = await api.listPhotos(projectId);
       state = state.copyWith(status: PhotosStatus.idle, items: items);
     } catch (_) {
-      state = state.copyWith(status: PhotosStatus.error, error: 'Erreur creation photo');
+      state = state.copyWith(status: PhotosStatus.error, error: 'Erreur upload photo');
     }
   }
 }

@@ -12,15 +12,32 @@ class AttendancesApi {
     return items.map(Attendance.fromJson).toList();
   }
 
-  Future<void> createAttendance(String projectId, String workerId) async {
+  Future<void> createAttendance({
+    required String projectId,
+    required String workerId,
+    required String date,
+    required bool present,
+    String? notes,
+  }) async {
     await _client.dio.post('/projects/$projectId/attendances', data: {
       'workerId': workerId,
+      'date': date,
+      'present': present,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
   }
 
-  Future<void> updateAttendance(String projectId, String id) async {
+  Future<void> updateAttendance({
+    required String projectId,
+    required String id,
+    String? date,
+    bool? present,
+    String? notes,
+  }) async {
     await _client.dio.patch('/projects/$projectId/attendances/$id', data: {
-      'checkOut': DateTime.now().toIso8601String(),
+      if (date != null) 'date': date,
+      if (present != null) 'present': present,
+      if (notes != null) 'notes': notes,
     });
   }
 }

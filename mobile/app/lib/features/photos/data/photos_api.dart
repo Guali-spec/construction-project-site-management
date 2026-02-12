@@ -1,4 +1,5 @@
-﻿import 'package:app/core/network/dio_client.dart';
+﻿import 'package:dio/dio.dart';
+import 'package:app/core/network/dio_client.dart';
 import 'package:app/features/photos/domain/models/photo.dart';
 
 class PhotosApi {
@@ -12,10 +13,23 @@ class PhotosApi {
     return items.map(PhotoItem.fromJson).toList();
   }
 
-  Future<void> createPhoto(String projectId, String url, String? caption) async {
-    await _client.dio.post('/projects/$projectId/photos', data: {
-      'url': url,
-      if (caption != null) 'caption': caption,
+  Future<void> uploadPhoto({
+    required String projectId,
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+    String? taskId,
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+      if (caption != null && caption.isNotEmpty) 'caption': caption,
+      if (taskId != null && taskId.isNotEmpty) 'taskId': taskId,
     });
+
+    await _client.dio.post(
+      '/projects/$projectId/photos/upload',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
   }
 }

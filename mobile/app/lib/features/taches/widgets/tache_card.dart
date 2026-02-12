@@ -29,11 +29,11 @@ class TacheCard extends StatelessWidget {
       case 'IN_PROGRESS':
         return 'En cours';
       case 'DONE':
-        return 'Terminee';
+        return 'Terminée';
       case 'BLOCKED':
-        return 'Bloquee';
+        return 'Bloquée';
       default:
-        return 'A faire';
+        return 'À faire';
     }
   }
 

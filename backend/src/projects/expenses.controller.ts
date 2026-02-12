@@ -19,8 +19,8 @@ import { PaginationDto } from "../common/dto/pagination.dto";
 export class ExpensesController {
   constructor(private readonly expenses: ExpensesService) {}
 
-  @Roles("SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
-  @ProjectRoles(ProjectMemberRole.SUPERVISOR)
+  @Roles("SUPERVISEUR", "CHEF_PROJET", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
   @Post()
   @ApiCreatedResponse({ description: "Expense created" })
   create(@Req() req: Request, @Param("projectId") projectId: string, @Body() dto: CreateExpenseDto) {
@@ -28,7 +28,7 @@ export class ExpensesController {
     return this.expenses.create(user.companyId, projectId, user.sub, dto);
   }
 
-  @Roles("CHEF_PROJET", "COMPTABLE", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
+  @Roles("CHEF_PROJET", "COMPTABLE", "SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
   @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
   @Get()
   @ApiQuery({ name: "page", required: false, type: Number })

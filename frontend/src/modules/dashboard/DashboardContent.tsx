@@ -1,82 +1,94 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
   DollarSign,
   TrendingUp,
   AlertTriangle,
   ArrowRight,
-  BarChart3,
-  Bell,
-  Target,
-  Database,
-  LineChart,
-  FileCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-const kpis = [
-  { title: 'Chantiers actifs', value: '12', sub: '3 en alerte', icon: Building2, color: 'amber', href: '/projects' },
-  { title: 'Budget global', value: '245 800 €', sub: '78 % engagé', icon: DollarSign, color: 'violet', href: '/finance' },
-  { title: 'Avancement moyen', value: '67 %', sub: '+5 % vs mois dernier', icon: TrendingUp, color: 'emerald', href: '/suivi' },
-  { title: 'Retards', value: '2', sub: 'nécessitent action', icon: AlertTriangle, color: 'red', href: '/suivi' },
-];
-
-const quickActions = [
-  { label: 'Nouveau chantier', href: '/projects/new', icon: Building2 },
-  { label: 'Suivi avancement', href: '/suivi', icon: TrendingUp },
-  { label: 'Saisie dépense', href: '/finance', icon: DollarSign },
-  { label: 'Rapport périodique', href: '/reports', icon: BarChart3 },
-];
+import { projectsService } from '@/modules/projects/projects.service';
+import { formatCfa } from '@/lib/format';
+import type { Project } from '@/types';
 
 const alertColors: Record<string, string> = {
   amber: 'bg-amber-500',
-  violet: 'bg-violet-500',
   emerald: 'bg-emerald-500',
   red: 'bg-red-500',
+  sky: 'bg-sky-500',
+};
+
+const statusLabel: Record<string, { label: string; tone: string }> = {
+  PLANNED: { label: 'Planifié', tone: 'bg-slate-100 text-slate-700' },
+  ACTIVE: { label: 'En cours', tone: 'bg-emerald-100 text-emerald-800' },
+  ON_HOLD: { label: 'En pause', tone: 'bg-amber-100 text-amber-800' },
+  COMPLETED: { label: 'Terminé', tone: 'bg-sky-100 text-sky-800' },
+  ARCHIVED: { label: 'Archivé', tone: 'bg-slate-200 text-slate-700' },
 };
 
 export default function DashboardContent() {
   const { user } = useAuth();
   const firstName = user?.firstName ?? '';
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await projectsService.getAllProjects();
+        if (mounted) setProjects(items);
+      } catch (err) {
+        if (mounted) setError('Impossible de charger les chantiers');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const stats = useMemo(() => {
+    const total = projects.length;
+    const active = projects.filter((p) => p.status === 'ACTIVE').length;
+    const completed = projects.filter((p) => p.status === 'COMPLETED').length;
+    const onHold = projects.filter((p) => p.status === 'ON_HOLD').length;
+    const totalBudget = projects.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
+    const avgProgress =
+      projects.length === 0
+        ? 0
+        : Math.round(
+            projects.reduce((sum, p) => sum + (Number(p.progress) || 0), 0) / projects.length,
+          );
+    return { total, active, completed, onHold, totalBudget, avgProgress };
+  }, [projects]);
+
+  const kpis = [
+    { title: 'Chantiers actifs', value: String(stats.active), sub: `${stats.total} au total`, icon: Building2, color: 'amber', href: '/projects' },
+    { title: 'Budget global', value: formatCfa(stats.totalBudget), sub: 'Somme des budgets', icon: DollarSign, color: 'sky', href: '/finance' },
+    { title: 'Chantiers terminés', value: String(stats.completed), sub: 'Projets clôturés', icon: CheckCircle2, color: 'emerald', href: '/projects' },
+    { title: 'Progression moyenne', value: `${stats.avgProgress}%`, sub: 'Basé sur les tâches', icon: TrendingUp, color: 'amber', href: '/tasks' },
+  ];
+
+  const latestProjects = [...projects].slice(0, 6);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Tableau de bord analytique</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Tableau de bord</h1>
         <p className="text-slate-600 mt-0.5">
-          {firstName ? `Bienvenue, ${firstName}.` : 'Bienvenue.'} Pilotage des chantiers, indicateurs clés et prise de décision.
+          {firstName ? `Bienvenue, ${firstName}.` : 'Bienvenue.'} Vue synthétique des chantiers.
         </p>
       </div>
+      {loading && <p className="text-sm text-slate-500">Chargement des indicateurs...</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {/* Objectifs du projet — alignement avec la vision */}
-      <div className="bg-slate-800 text-white rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Target size={16} /> Pilotage & objectifs
-        </h2>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 text-sm text-slate-300">
-          <li className="flex items-center gap-2"><Database size={14} className="text-amber-400 shrink-0" /> Données chantier centralisées et sécurisées</li>
-          <li className="flex items-center gap-2"><TrendingUp size={14} className="text-amber-400 shrink-0" /> Communication terrain / bureau améliorée</li>
-          <li className="flex items-center gap-2"><DollarSign size={14} className="text-amber-400 shrink-0" /> Réduction des pertes et optimisation des ressources</li>
-          <li className="flex items-center gap-2"><BarChart3 size={14} className="text-amber-400 shrink-0" /> Analyse et reporting automatisés</li>
-          <li className="flex items-center gap-2"><FileCheck size={14} className="text-amber-400 shrink-0" /> Traçabilité complète des opérations</li>
-          <li className="flex items-center gap-2"><LineChart size={14} className="text-amber-400 shrink-0" /> Prise de décision via tableaux de bord</li>
-        </ul>
-      </div>
-
-      {/* Alertes nécessitant action */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-        <Bell className="text-amber-600 shrink-0 mt-0.5" size={20} />
-        <div className="min-w-0">
-          <h3 className="font-semibold text-amber-900">Alertes</h3>
-          <p className="text-sm text-amber-800 mt-0.5">
-            2 retards critiques, 1 dépassement budgétaire à valider. <Link href="/suivi" className="font-medium underline">Voir le détail</Link>
-          </p>
-        </div>
-      </div>
-
-      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((k) => {
           const Icon = k.icon;
@@ -104,107 +116,75 @@ export default function DashboardContent() {
         })}
       </div>
 
-      {/* Comparaison période actuelle vs précédente */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-5">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Comparaison période actuelle / précédente</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Avancement</p>
-            <p className="text-xl font-bold text-emerald-600">+5 %</p>
-            <p className="text-xs text-slate-500">vs mois dernier</p>
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Dépenses</p>
-            <p className="text-xl font-bold text-slate-800">−2 %</p>
-            <p className="text-xs text-slate-500">vs prévu</p>
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Ouvriers</p>
-            <p className="text-xl font-bold text-slate-800">143</p>
-            <p className="text-xs text-slate-500">présents aujourd’hui</p>
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs font-medium uppercase tracking-wider">Jours restants</p>
-            <p className="text-xl font-bold text-amber-600">47</p>
-            <p className="text-xs text-slate-500">moyenne chantiers actifs</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Évolution temporelle */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Évolution temporelle (avancement)</h2>
-          <div className="h-52 flex items-center justify-center rounded-lg bg-slate-50 border border-dashed border-slate-200 text-slate-400 text-sm">
-            Graphique dynamique — API
-          </div>
-        </div>
-        {/* Répartition des coûts */}
-        <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">Répartition des coûts</h2>
-          <div className="h-52 flex items-center justify-center rounded-lg bg-slate-50 border border-dashed border-slate-200 text-slate-400 text-sm">
-            Graphique répartition — API
-          </div>
-        </div>
-      </div>
-
-      {/* Accès rapides + Synthèse chantiers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-slate-800 mb-4">Accès rapides</h2>
           <ul className="space-y-2">
-            {quickActions.map((a) => {
-              const Icon = a.icon;
-              return (
-                <li key={a.label}>
-                  <Link
-                    href={a.href}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-800 font-medium transition-colors"
-                  >
-                    <Icon size={18} className="text-amber-600" />
-                    {a.label}
-                  </Link>
-                </li>
-              );
-            })}
+            <li>
+              <Link href="/projects/new" className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-800 font-medium transition-colors">
+                <Building2 size={18} className="text-amber-600" />
+                Nouveau chantier
+              </Link>
+            </li>
+            <li>
+              <Link href="/projects" className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-800 font-medium transition-colors">
+                <TrendingUp size={18} className="text-amber-600" />
+                Suivi des chantiers
+              </Link>
+            </li>
+            <li>
+              <Link href="/finance" className="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-amber-50 hover:text-amber-800 font-medium transition-colors">
+                <DollarSign size={18} className="text-amber-600" />
+                Saisie de dépense
+              </Link>
+            </li>
           </ul>
         </div>
+
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Synthèse chantiers actifs (statuts visuels)</h2>
-            <Link href="/projects" className="text-sm font-medium text-amber-600 hover:text-amber-700">
-              Voir tout
-            </Link>
+            <h2 className="text-lg font-semibold text-slate-800">Derniers chantiers</h2>
+            <Link href="/projects" className="text-sm font-medium text-amber-600 hover:text-amber-700">Voir tout</Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-500 border-b border-slate-100">
-                  <th className="pb-2 font-medium">Chantier</th>
-                  <th className="pb-2 font-medium">Avancement</th>
-                  <th className="pb-2 font-medium">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr>
-                  <td className="py-2 font-medium text-slate-800">Chantier A</td>
-                  <td className="py-2"><span className="inline-block w-24 h-2 bg-slate-200 rounded-full overflow-hidden"><span className="block h-full w-[70%] bg-emerald-500 rounded-full" /></span> 70 %</td>
-                  <td className="py-2"><span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">En cours</span></td>
-                </tr>
-                <tr>
-                  <td className="py-2 font-medium text-slate-800">Chantier B</td>
-                  <td className="py-2"><span className="inline-block w-24 h-2 bg-slate-200 rounded-full overflow-hidden"><span className="block h-full w-[45%] bg-amber-500 rounded-full" /></span> 45 %</td>
-                  <td className="py-2"><span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Retard</span></td>
-                </tr>
-                <tr>
-                  <td className="py-2 font-medium text-slate-800">Chantier C</td>
-                  <td className="py-2"><span className="inline-block w-24 h-2 bg-slate-200 rounded-full overflow-hidden"><span className="block h-full w-[90%] bg-sky-500 rounded-full" /></span> 90 %</td>
-                  <td className="py-2"><span className="px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">En cours</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-slate-500 mt-3">Vue consolidée multi-chantiers — données à brancher sur l’API.</p>
+          {latestProjects.length === 0 ? (
+            <p className="text-sm text-slate-500">Aucun chantier pour le moment.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b border-slate-100">
+                    <th className="pb-2 font-medium">Chantier</th>
+                    <th className="pb-2 font-medium">Statut</th>
+                <th className="pb-2 font-medium">Budget</th>
+                <th className="pb-2 font-medium">Progression</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {latestProjects.map((p) => {
+                const status = statusLabel[p.status] ?? statusLabel.PLANNED;
+                return (
+                  <tr key={p.id}>
+                    <td className="py-2 font-medium text-slate-800">{p.name}</td>
+                    <td className="py-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.tone}`}>{status.label}</span></td>
+                    <td className="py-2 text-slate-600">{p.budget ? formatCfa(p.budget) : '-'}</td>
+                    <td className="py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-28 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-amber-500"
+                            style={{ width: `${Math.min(100, Math.max(0, Number(p.progress) || 0))}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">{Number(p.progress) || 0}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

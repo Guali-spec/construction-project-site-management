@@ -16,6 +16,14 @@ class TacheApi {
     return items.map(Phase.fromJson).toList();
   }
 
+  Future<Phase> createPhase(String projectId, String name, int order) async {
+    final res = await _client.dio.post('/projects/$projectId/phases', data: {
+      'name': name,
+      'order': order,
+    });
+    return Phase.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<List<Lot>> listLots(String projectId, String phaseId) async {
     final res = await _client.dio.get('/projects/$projectId/phases/$phaseId/lots');
     final data = res.data as Map<String, dynamic>;
@@ -23,11 +31,24 @@ class TacheApi {
     return items.map(Lot.fromJson).toList();
   }
 
+  Future<Lot> createLot(String projectId, String phaseId, String name, int order) async {
+    final res = await _client.dio.post('/projects/$projectId/phases/$phaseId/lots', data: {
+      'name': name,
+      'order': order,
+    });
+    return Lot.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<List<Tache>> listTasks(String projectId, String lotId) async {
     final res = await _client.dio.get('/projects/$projectId/lots/$lotId/tasks');
     final data = res.data as Map<String, dynamic>;
     final items = (data['items'] as List<dynamic>).cast<Map<String, dynamic>>();
     return items.map(Tache.fromJson).toList();
+  }
+
+  Future<Tache> createTask(String projectId, String lotId, Map<String, dynamic> payload) async {
+    final res = await _client.dio.post('/projects/$projectId/lots/$lotId/tasks', data: payload);
+    return Tache.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<void> updateStatus(String projectId, String lotId, String taskId, String status, int progress) async {

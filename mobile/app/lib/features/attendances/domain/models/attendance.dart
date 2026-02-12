@@ -1,25 +1,25 @@
 ﻿class Attendance {
   final String id;
   final String workerId;
-  final String? checkIn;
-  final String? checkOut;
-  final String? note;
+  final String date;
+  final bool? present;
+  final String? notes;
 
   Attendance({
     required this.id,
     required this.workerId,
-    this.checkIn,
-    this.checkOut,
-    this.note,
+    required this.date,
+    this.present,
+    this.notes,
   });
 
   factory Attendance.fromJson(Map<String, dynamic> json) {
     return Attendance(
       id: json['id'] as String,
       workerId: json['workerId'] as String,
-      checkIn: json['checkIn'] as String?,
-      checkOut: json['checkOut'] as String?,
-      note: json['note'] as String?,
+      date: (json['date'] as String?) ?? '',
+      present: json['present'] as bool?,
+      notes: json['notes'] as String?,
     );
   }
 }

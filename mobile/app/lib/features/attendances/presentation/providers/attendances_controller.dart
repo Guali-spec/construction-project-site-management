@@ -55,25 +55,42 @@ class AttendancesController extends StateNotifier<AttendancesState> {
     }
   }
 
-  Future<void> checkIn(String projectId, String workerId) async {
+  Future<void> create({
+    required String projectId,
+    required String workerId,
+    required String date,
+    required bool present,
+    String? notes,
+  }) async {
     state = state.copyWith(status: AttendancesStatus.loading, error: null);
     try {
       final api = AttendancesApi(_ref.read(dioClientProvider));
-      await api.createAttendance(projectId, workerId);
+      await api.createAttendance(
+        projectId: projectId,
+        workerId: workerId,
+        date: date,
+        present: present,
+        notes: notes,
+      );
       await load(projectId);
     } catch (_) {
-      state = state.copyWith(status: AttendancesStatus.error, error: 'Erreur check-in');
+      state = state.copyWith(status: AttendancesStatus.error, error: 'Erreur creation presence');
     }
   }
 
-  Future<void> checkOut(String projectId, String attendanceId) async {
+  Future<void> update({
+    required String projectId,
+    required String attendanceId,
+    bool? present,
+    String? notes,
+  }) async {
     state = state.copyWith(status: AttendancesStatus.loading, error: null);
     try {
       final api = AttendancesApi(_ref.read(dioClientProvider));
-      await api.updateAttendance(projectId, attendanceId);
+      await api.updateAttendance(projectId: projectId, id: attendanceId, present: present, notes: notes);
       await load(projectId);
     } catch (_) {
-      state = state.copyWith(status: AttendancesStatus.error, error: 'Erreur check-out');
+      state = state.copyWith(status: AttendancesStatus.error, error: 'Erreur mise a jour presence');
     }
   }
 }

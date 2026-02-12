@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/modules/auth/auth.service";
-import { Building2 } from "lucide-react";
+import BuildTrackLogo from "@/components/BuildTrackLogo";
 
 export default function RegisterForm() {
   const [firstName, setFirstName] = useState("");
@@ -40,9 +40,9 @@ export default function RegisterForm() {
         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
           <div className="px-8 pt-10 pb-6 text-center border-b border-slate-100">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-amber-500 text-white mb-4">
-              <Building2 size={28} />
+              <BuildTrackLogo className="w-8 h-8" />
             </div>
-            <h1 className="text-xl font-bold text-slate-800">SiteManager</h1>
+            <h1 className="text-xl font-bold text-slate-800">BuildTrack</h1>
             <p className="text-slate-500 text-sm mt-1">Créer un nouveau compte</p>
           </div>
 

@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:app/features/chantier/domain/models/chantier.dart';
+import 'package:app/ui/app_theme.dart';
 
 class ChantierCard extends StatelessWidget {
   final Chantier chantier;
@@ -8,6 +9,8 @@ class ChantierCard extends StatelessWidget {
   final VoidCallback? onWorkers;
   final VoidCallback? onAttendances;
   final VoidCallback? onPhotos;
+  final VoidCallback? onFinance;
+  final String? primaryActionLabel;
 
   const ChantierCard({
     super.key,
@@ -17,6 +20,8 @@ class ChantierCard extends StatelessWidget {
     this.onWorkers,
     this.onAttendances,
     this.onPhotos,
+    this.onFinance,
+    this.primaryActionLabel,
   });
 
   Color _statusColor(String status) {
@@ -30,22 +35,7 @@ class ChantierCard extends StatelessWidget {
       case 'ARCHIVED':
         return Colors.grey;
       default:
-        return Colors.blue;
-    }
-  }
-
-  Color _cardColor(String status) {
-    switch (status) {
-      case 'ACTIVE':
-        return Colors.green[50]!;
-      case 'ON_HOLD':
-        return Colors.orange[50]!;
-      case 'COMPLETED':
-        return Colors.blueGrey[50]!;
-      case 'ARCHIVED':
-        return Colors.grey[200]!;
-      default:
-        return Colors.blue[50]!;
+        return AppColors.accent;
     }
   }
 
@@ -56,44 +46,92 @@ class ChantierCard extends StatelessWidget {
       case 'ON_HOLD':
         return 'En pause';
       case 'COMPLETED':
-        return 'Termine';
+        return 'Terminé';
       case 'ARCHIVED':
-        return 'Archive';
+        return 'Archivé';
       case 'PLANNED':
       default:
-        return 'Planifie';
+        return 'Planifié';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: _cardColor(chantier.status),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        children: [
-          ListTile(
-            onTap: onTap,
-            leading: const Icon(Icons.home_work, color: Colors.blue),
-            title: Text(
-              chantier.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.accent.withOpacity(0.15),
+                  child: const Icon(Icons.apartment, color: AppColors.accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(chantier.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 4),
+                      Text(chantier.location ?? '-', style: const TextStyle(color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _statusColor(chantier.status),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _statusLabel(chantier.status),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
-            subtitle: Text(chantier.location ?? '-'),
-            trailing: Chip(
-              label: Text(
-                _statusLabel(chantier.status),
-                style: const TextStyle(color: Colors.white),
+            const SizedBox(height: 12),
+            if (chantier.budget != null)
+              Text('Budget: ${chantier.budget!.toInt()} F CFA', style: const TextStyle(color: AppColors.textMuted)),
+            if (chantier.progress != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    const Text('Progression', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        value: (chantier.progress!.toDouble() / 100).clamp(0, 1),
+                        minHeight: 6,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${chantier.progress!.toInt()}%', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ],
+                ),
               ),
-              backgroundColor: _statusColor(chantier.status),
-            ),
-          ),
-          if (onTasks != null || onWorkers != null || onAttendances != null || onPhotos != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Wrap(
+            const SizedBox(height: 8),
+            if (primaryActionLabel != null && onTap != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.arrow_forward),
+                  label: Text(primaryActionLabel!),
+                ),
+              )
+            else if (onTasks != null || onWorkers != null || onAttendances != null || onPhotos != null || onFinance != null)
+              Wrap(
                 spacing: 8,
                 runSpacing: 6,
                 children: [
@@ -101,19 +139,19 @@ class ChantierCard extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: onTasks,
                       icon: const Icon(Icons.checklist, size: 18),
-                      label: const Text('Taches'),
+                      label: const Text('Tâches'),
                     ),
                   if (onWorkers != null)
                     OutlinedButton.icon(
                       onPressed: onWorkers,
                       icon: const Icon(Icons.people, size: 18),
-                      label: const Text('Ouvriers'),
+                      label: const Text('Ressources'),
                     ),
                   if (onAttendances != null)
                     OutlinedButton.icon(
                       onPressed: onAttendances,
-                      icon: const Icon(Icons.fact_check, size: 18),
-                      label: const Text('Presences'),
+                      icon: const Icon(Icons.track_changes, size: 18),
+                      label: const Text('Suivi'),
                     ),
                   if (onPhotos != null)
                     OutlinedButton.icon(
@@ -121,10 +159,17 @@ class ChantierCard extends StatelessWidget {
                       icon: const Icon(Icons.photo_camera, size: 18),
                       label: const Text('Photos'),
                     ),
+                  if (onFinance != null)
+                    OutlinedButton.icon(
+                      onPressed: onFinance,
+                      icon: const Icon(Icons.account_balance_wallet, size: 18),
+                      label: const Text('Finances'),
+                    ),
                 ],
               ),
-            ),
-        ],
+          ],
+          ),
+        ),
       ),
     );
   }

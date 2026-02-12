@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ProjectRoleGuard } from "../auth/guards/project-role.guard";
@@ -13,6 +13,19 @@ import { Roles } from "../auth/decorators/roles.decorator";
 @UseGuards(JwtAuthGuard, ProjectRoleGuard)
 export class ProjectsMembersController {
   constructor(private readonly members: ProjectsMembersService) {}
+
+  @ProjectRoles(
+    ProjectMemberRole.OWNER,
+    ProjectMemberRole.MANAGER,
+    ProjectMemberRole.SUPERVISOR,
+    ProjectMemberRole.WORKER,
+  )
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE", "CONSULTANT")
+  @Get()
+  list(@Req() req: Request, @Param("projectId") projectId: string) {
+    const user = req.user as any;
+    return this.members.listMembers(user.companyId, projectId);
+  }
 
   @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER)
   @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")

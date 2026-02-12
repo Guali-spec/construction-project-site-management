@@ -1,7 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/taches/presentation/providers/tache_controller.dart';
+import 'package:app/ui/app_scaffold.dart';
 import 'widgets/tache_card.dart';
+import 'package:app/ui/empty_state.dart';
 
 class TacheListScreen extends ConsumerStatefulWidget {
   final String chantierId;
@@ -18,58 +20,44 @@ class TacheListScreen extends ConsumerStatefulWidget {
 }
 
 class _TacheListScreenState extends ConsumerState<TacheListScreen> {
+  String _filter = 'ALL';
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(tacheControllerProvider.notifier).loadPhases(widget.chantierId));
+    Future.microtask(() => ref.read(tacheControllerProvider.notifier).loadForProject(widget.chantierId));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(tacheControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text('Taches - ${widget.chantierName}')),
+    return AppScaffold(
+      title: 'Tâches - ${widget.chantierName}',
+      currentRoute: '/taches',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              value: state.selectedPhaseId,
-              decoration: const InputDecoration(labelText: 'Phase'),
-              items: state.phases
-                  .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                ref.read(tacheControllerProvider.notifier).selectPhase(widget.chantierId, value);
-              },
-            ),
+            _filterRow(),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: state.selectedLotId,
-              decoration: const InputDecoration(labelText: 'Lot'),
-              items: state.lots
-                  .map((l) => DropdownMenuItem(value: l.id, child: Text(l.name)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                ref.read(tacheControllerProvider.notifier).selectLot(widget.chantierId, value);
-              },
-            ),
-            const SizedBox(height: 16),
             if (state.status == TacheStatus.loading)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (state.status == TacheStatus.error)
               Expanded(child: Center(child: Text(state.error ?? 'Erreur')))
             else if (state.taches.isEmpty)
-              const Expanded(child: Center(child: Text('Aucune tache')))
+              const Expanded(
+                child: EmptyState(
+                  title: 'Aucune tâche',
+                  message: 'Ajoutez une première tâche pour ce chantier.',
+                ),
+              )
             else
               Expanded(
                 child: ListView.builder(
-                  itemCount: state.taches.length,
+                  itemCount: _filtered(state.taches).length,
                   itemBuilder: (context, index) {
-                    final tache = state.taches[index];
+                    final tache = _filtered(state.taches)[index];
                     return TacheCard(
                       tache: tache,
                       onTapEdit: () => _editTache(tache),
@@ -79,6 +67,84 @@ class _TacheListScreenState extends ConsumerState<TacheListScreen> {
               ),
           ],
         ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: () => _openCreate(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _filterRow() {
+    return Row(
+      children: [
+        _filterChip('Tous', 'ALL'),
+        const SizedBox(width: 8),
+        _filterChip('En cours', 'IN_PROGRESS'),
+        const SizedBox(width: 8),
+        _filterChip('Terminées', 'DONE'),
+      ],
+    );
+  }
+
+  Widget _filterChip(String label, String value) {
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _filter = value),
+    );
+  }
+
+  List<dynamic> _filtered(List<dynamic> items) {
+    if (_filter == 'ALL') return items;
+    return items.where((t) => t.status == _filter).toList();
+  }
+
+  void _openCreate(BuildContext context) {
+    final name = TextEditingController();
+    final description = TextEditingController();
+    String priority = 'MEDIUM';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nouvelle tâche'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Titre')),
+              TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+              DropdownButtonFormField<String>(
+                value: priority,
+                decoration: const InputDecoration(labelText: 'Priorité'),
+                items: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (value) => priority = value ?? 'MEDIUM',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(tacheControllerProvider.notifier).createTask(widget.chantierId, {
+                'name': name.text.trim(),
+                'description': description.text.trim().isEmpty ? null : description.text.trim(),
+                'status': 'TODO',
+                'priority': priority,
+                'progress': 0,
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Créer'),
+          ),
+        ],
       ),
     );
   }

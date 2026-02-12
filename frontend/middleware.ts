@@ -2,6 +2,27 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { allowedRoutesForRole, routeKeyFromPath } from "@/lib/role-routing";
 
+const routePathByKey: Record<string, string> = {
+  dashboard: "/dashboard",
+  projects: "/projects",
+  tasks: "/tasks",
+  photos: "/photos",
+  suivi: "/suivi",
+  resources: "/resources",
+  finance: "/finance",
+  reports: "/reports",
+  admin: "/admin",
+};
+
+function getDefaultRoute(role?: string | null) {
+  if (!role) return "/login";
+  if (role === "SUPER_ADMIN" || role === "ADMIN_ENTREPRISE") return "/admin";
+  const allowed = allowedRoutesForRole(role as any);
+  if (allowed.length === 0) return "/pending";
+  const key = allowed[0];
+  return routePathByKey[key] ?? "/projects";
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -11,7 +32,7 @@ export function middleware(request: NextRequest) {
     const role = request.cookies.get("user_role")?.value;
 
     if (token && role && (pathname === "/login" || pathname === "/register")) {
-      const target = role === "SUPER_ADMIN" || role === "ADMIN_ENTREPRISE" ? "/admin" : "/dashboard";
+      const target = getDefaultRoute(role);
       return NextResponse.redirect(new URL(target, request.url));
     }
 
@@ -32,12 +53,12 @@ export function middleware(request: NextRequest) {
   }
 
   if (role && role !== "PENDING" && pathname.startsWith("/pending")) {
-    const dashboardUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(dashboardUrl);
+    const target = getDefaultRoute(role);
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   if (pathname === "/") {
-    const target = role === "SUPER_ADMIN" || role === "ADMIN_ENTREPRISE" ? "/admin" : "/dashboard";
+    const target = getDefaultRoute(role);
     return NextResponse.redirect(new URL(target, request.url));
   }
 
@@ -46,7 +67,7 @@ export function middleware(request: NextRequest) {
     if (routeKey) {
       const allowed = allowedRoutesForRole(role as any);
       if (!allowed.includes(routeKey)) {
-        const target = role === "SUPER_ADMIN" || role === "ADMIN_ENTREPRISE" ? "/admin" : "/dashboard";
+        const target = getDefaultRoute(role);
         return NextResponse.redirect(new URL(target, request.url));
       }
     }

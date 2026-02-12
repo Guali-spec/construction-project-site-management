@@ -1,4 +1,4 @@
-# Project Devlog — Construction Project & Site Management (Backend & DB)
+��# Project Devlog — Construction Project & Site Management (Backend & DB)
 
 Ce fichier est le **journal de bord technique** du projet côté **Backend + Base de données**.
 Objectif : garder une trace **de chaque action** (même petite), des fichiers créés/modifiés, des commandes exécutées, et des décisions prises.

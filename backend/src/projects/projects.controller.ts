@@ -5,6 +5,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { ProjectsService } from "./projects.service";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
+import { UpdateProjectStatusDto } from "./dto/update-project-status.dto";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { PaginationDto } from "../common/dto/pagination.dto";
 
@@ -16,7 +17,7 @@ export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
 
   @Post()
-  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR", "COMPTABLE")
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "COMPTABLE")
   @ApiCreatedResponse({ description: "Project created" })
   create(@Req() req: Request, @Body() dto: CreateProjectDto) {
     const user = req.user as any;
@@ -52,6 +53,14 @@ export class ProjectsController {
   update(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateProjectDto) {
     const user = req.user as any;
     return this.projects.update(user.sub, user.companyId, id, dto);
+  }
+
+  @Patch(":id/status")
+  @Roles("SUPER_ADMIN", "ADMIN_ENTREPRISE", "CHEF_PROJET", "SUPERVISEUR")
+  @ApiOkResponse({ description: "Project status updated" })
+  updateStatus(@Req() req: Request, @Param("id") id: string, @Body() dto: UpdateProjectStatusDto) {
+    const user = req.user as any;
+    return this.projects.updateStatus(user.sub, user.companyId, id, dto);
   }
 
   @Delete(":id")

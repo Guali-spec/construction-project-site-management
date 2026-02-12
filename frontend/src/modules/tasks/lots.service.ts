@@ -7,3 +7,12 @@ export async function listLots(projectId: string, phaseId: string, page = 1, lim
   );
   return res.data;
 }
+
+export async function createLot(
+  projectId: string,
+  phaseId: string,
+  data: { name: string; description?: string; order: number; startDate?: string; endDate?: string }
+) {
+  const res = await apiClient.post<LotItem>(`/projects/${projectId}/phases/${phaseId}/lots`, data);
+  return res.data;
+}

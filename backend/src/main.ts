@@ -16,19 +16,31 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+      crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
 
   app.use("/uploads", express.static(join(process.cwd(), "uploads")));
 
-  const corsOriginsRaw = process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:5173";
+  const corsOriginsRaw =
+    process.env.CORS_ORIGINS ??
+    "http://localhost:3000,http://localhost:5173,http://localhost:60174,http://127.0.0.1:60174";
   const corsOrigins = corsOriginsRaw
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
 
+  const originAllowlist = new Set(corsOrigins);
+
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (originAllowlist.has(origin)) return callback(null, true);
+      if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Authorization", "Content-Type"],
     credentials: true,
@@ -37,7 +49,7 @@ async function bootstrap() {
   app.setGlobalPrefix("api/v1");
 
   const config = new DocumentBuilder()
-    .setTitle("Construction Project & Site Management API")
+    .setTitle("BuildTrack API")
     .setVersion("1.0")
     .addBearerAuth(
       {

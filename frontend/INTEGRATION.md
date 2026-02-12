@@ -1,4 +1,4 @@
-# Intégration Frontend — SiteManager
+# Intégration Frontend — BuildTrack
 
 L’interface web est **prête pour l’intégration**. Les données et comportements actuels sont **fictifs / mock** et seront remplacés par :
 - **Backend** : API REST (auth, chantiers, suivi, ressources, finances, rapports, admin)

@@ -13,8 +13,9 @@ export function allowedRoutesForRole(role: AppRole): string[] {
     case "ADMIN_ENTREPRISE":
       return ["dashboard", "projects", "tasks", "photos", "suivi", "resources", "finance", "reports", "admin"];
     case "CHEF_PROJET":
+      return ["dashboard", "projects", "tasks", "photos", "suivi", "resources", "finance", "reports"];
     case "SUPERVISEUR":
-      return ["dashboard", "projects", "tasks", "photos", "suivi", "resources", "reports"];
+      return ["projects", "tasks", "photos", "suivi", "resources", "finance", "reports"];
     case "COMPTABLE":
       return ["dashboard", "projects", "tasks", "photos", "finance", "reports"];
     case "CONSULTANT":

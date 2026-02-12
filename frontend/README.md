@@ -1,4 +1,4 @@
-# SiteManager — Frontend Web
+# BuildTrack — Frontend Web
 
 Interface web **React/Next.js** pour la gestion et le pilotage des chantiers (rôle : frontend + intégration).
 

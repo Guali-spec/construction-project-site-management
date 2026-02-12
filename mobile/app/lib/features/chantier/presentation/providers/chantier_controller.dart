@@ -1,4 +1,5 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/providers.dart';
 import 'package:app/features/chantier/data/chantier_api.dart';
 import 'package:app/features/chantier/domain/models/chantier.dart';
@@ -42,7 +43,19 @@ class ChantierController extends StateNotifier<ChantierState> {
       final api = ChantierApi(_ref.read(dioClientProvider));
       final items = await api.listChantiers();
       state = state.copyWith(status: ChantierStatus.idle, items: items);
-    } catch (_) {
+    } catch (e) {
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        if (status == 401 || status == 403) {
+          state = state.copyWith(status: ChantierStatus.error, error: 'Non autorise. Reconnectez-vous.');
+          return;
+        }
+        state = state.copyWith(
+          status: ChantierStatus.error,
+          error: 'Erreur de chargement (${status ?? 'reseau'})',
+        );
+        return;
+      }
       state = state.copyWith(status: ChantierStatus.error, error: 'Erreur de chargement');
     }
   }

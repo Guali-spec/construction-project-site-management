@@ -3,19 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useProjects } from "@/hooks/useProjects";
+import { useAuth } from "@/hooks/useAuth";
+import { formatCfa } from "@/lib/format";
 import { Building2, MapPin, CheckCircle, Clock, PlayCircle, PauseCircle, Archive } from "lucide-react";
 
 const statusConfig: Record<string, { icon: typeof PlayCircle; label: string; className: string }> = {
-  PLANNED: { icon: Clock, label: "Planifie", className: "bg-amber-100 text-amber-800" },
+  PLANNED: { icon: Clock, label: "Planifié", className: "bg-amber-100 text-amber-800" },
   ACTIVE: { icon: PlayCircle, label: "En cours", className: "bg-emerald-100 text-emerald-800" },
   ON_HOLD: { icon: PauseCircle, label: "En pause", className: "bg-orange-100 text-orange-800" },
-  COMPLETED: { icon: CheckCircle, label: "Termine", className: "bg-sky-100 text-sky-800" },
-  ARCHIVED: { icon: Archive, label: "Archive", className: "bg-slate-100 text-slate-600" },
+  COMPLETED: { icon: CheckCircle, label: "Terminé", className: "bg-sky-100 text-sky-800" },
+  ARCHIVED: { icon: Archive, label: "Archivé", className: "bg-slate-100 text-slate-600" },
 };
 
 export default function ProjectsList() {
+  const { user } = useAuth();
   const { projects, isLoading, error } = useProjects();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [actionError, setActionError] = useState("");
+
+  const canCreate =
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "ADMIN_ENTREPRISE" ||
+    user?.role === "CHEF_PROJET" ||
+    user?.role === "COMPTABLE";
 
   const filtered = statusFilter === "all" ? projects : projects.filter((p) => p.status === statusFilter);
   const stats = {
@@ -23,7 +33,7 @@ export default function ProjectsList() {
     active: projects.filter((p) => p.status === "ACTIVE").length,
     planned: projects.filter((p) => p.status === "PLANNED").length,
     completed: projects.filter((p) => p.status === "COMPLETED").length,
-    totalBudget: projects.reduce((sum, p) => sum + (p.budget ?? 0), 0),
+    totalBudget: projects.reduce((sum, p) => sum + (Number(p.budget) || 0), 0),
   };
 
   if (isLoading) {
@@ -46,7 +56,7 @@ export default function ProjectsList() {
           onClick={() => window.location.reload()}
           className="mt-2 text-sm font-medium text-red-600 hover:underline"
         >
-          Reessayer
+          Réessayer
         </button>
       </div>
     );
@@ -61,14 +71,30 @@ export default function ProjectsList() {
             {projects.length} chantier{projects.length !== 1 ? "s" : ""} au total
           </p>
         </div>
-        <Link
-          href="/projects/new"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm shrink-0"
-        >
-          <Building2 size={18} />
-          Nouveau chantier
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/projects/new"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 transition-colors text-sm shrink-0"
+          >
+            <Building2 size={18} />
+            Nouveau chantier
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActionError("Vous n'êtes pas habilité à créer un chantier.")}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-slate-500 bg-slate-100 text-sm shrink-0 cursor-not-allowed"
+          >
+            <Building2 size={18} />
+            Nouveau chantier
+          </button>
+        )}
       </div>
+      {actionError && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2">
+          {actionError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
@@ -81,10 +107,10 @@ export default function ProjectsList() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
           <p className="text-slate-500 text-sm font-medium">Budget total</p>
-          <p className="text-xl font-bold text-slate-800 mt-0.5">{stats.totalBudget.toLocaleString("fr-FR")} EUR</p>
+          <p className="text-xl font-bold text-slate-800 mt-0.5">{formatCfa(stats.totalBudget)}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-4">
-          <p className="text-slate-500 text-sm font-medium">Termines</p>
+          <p className="text-slate-500 text-sm font-medium">Terminés</p>
           <p className="text-xl font-bold text-sky-600 mt-0.5">{stats.completed}</p>
         </div>
       </div>
@@ -94,8 +120,8 @@ export default function ProjectsList() {
           {[
             { key: "all", label: `Tous (${stats.total})` },
             { key: "ACTIVE", label: `En cours (${stats.active})` },
-            { key: "PLANNED", label: `Planifies (${stats.planned})` },
-            { key: "COMPLETED", label: `Termines (${stats.completed})` },
+            { key: "PLANNED", label: `Planifiés (${stats.planned})` },
+            { key: "COMPLETED", label: `Terminés (${stats.completed})` },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -120,6 +146,7 @@ export default function ProjectsList() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Localisation</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Dates</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Budget</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Progression</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -150,7 +177,18 @@ export default function ProjectsList() {
                       <span>{endDate}</span>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-800">
-                      {(project.budget ?? 0).toLocaleString("fr-FR")} EUR
+                      {formatCfa(project.budget)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-24 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full bg-amber-500"
+                            style={{ width: `${Math.min(100, Math.max(0, Number(project.progress) || 0))}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500">{Number(project.progress) || 0}%</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
@@ -164,7 +202,7 @@ export default function ProjectsList() {
                           Voir
                         </Link>
                         <Link href={`/projects/${project.id}/edit`} className="text-sm text-slate-600 hover:text-slate-800">
-                          Editer
+                          Éditer
                         </Link>
                       </div>
                     </td>
@@ -180,7 +218,7 @@ export default function ProjectsList() {
             <Building2 className="mx-auto h-12 w-12 text-slate-300" />
             <h3 className="mt-3 text-sm font-medium text-slate-700">Aucun chantier</h3>
             <p className="mt-1 text-sm text-slate-500">
-              {statusFilter === "all" ? "Creez un premier chantier." : "Aucun chantier avec ce filtre."}
+              {statusFilter === "all" ? "Créez un premier chantier." : "Aucun chantier avec ce filtre."}
             </p>
           </div>
         )}

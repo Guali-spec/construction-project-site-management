@@ -143,4 +143,16 @@ export class ProjectsMembersService {
       where: { id: member.id },
     });
   }
+
+  async listMembers(companyId: string, projectId: string) {
+    return this.prisma.projectMember.findMany({
+      where: { projectId, deletedAt: null, project: { companyId } },
+      orderBy: { assignedAt: "asc" },
+      include: {
+        user: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
+    });
+  }
 }

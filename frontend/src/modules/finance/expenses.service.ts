@@ -12,3 +12,11 @@ export async function updateExpenseStatus(projectId: string, id: string, status:
   const res = await apiClient.patch<Expense>(`/projects/${projectId}/expenses/${id}/status`, { status });
   return res.data;
 }
+
+export async function createExpense(
+  projectId: string,
+  data: { amount: number; category: string; description?: string }
+) {
+  const res = await apiClient.post<Expense>(`/projects/${projectId}/expenses`, data);
+  return res.data;
+}

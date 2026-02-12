@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Building2 } from 'lucide-react';
+import BuildTrackLogo from '@/components/BuildTrackLogo';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -39,10 +39,10 @@ export default function LoginForm() {
         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
           <div className="px-8 pt-10 pb-6 text-center border-b border-slate-100">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-amber-500 text-white mb-4">
-              <Building2 size={28} />
+              <BuildTrackLogo className="w-8 h-8" />
             </div>
-            <h1 className="text-xl font-bold text-slate-800">SiteManager</h1>
-            <p className="text-slate-500 text-sm mt-1">Connexion a votre espace chantier</p>
+            <h1 className="text-xl font-bold text-slate-800">BuildTrack</h1>
+            <p className="text-slate-500 text-sm mt-1">Connexion à votre espace chantier</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-5">
@@ -90,7 +90,7 @@ export default function LoginForm() {
               Utilisez vos identifiants d’acces pour vous connecter.
             </p>
             <p className="text-center text-xs text-slate-500">
-              Pas de compte ? <a className="text-amber-600 hover:underline" href="/register">Creer un compte</a>
+              Pas de compte ? <a className="text-amber-600 hover:underline" href="/register">Créer un compte</a>
             </p>
           </form>
         </div>

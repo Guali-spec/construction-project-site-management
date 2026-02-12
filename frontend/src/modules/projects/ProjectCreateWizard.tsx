@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Building2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ProjectCreateWizard() {
   const router = useRouter();
+  const { user } = useAuth();
   const { createProject } = useProjects();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -24,11 +26,21 @@ export default function ProjectCreateWizard() {
     setError('');
   }, [form.name, form.description, form.location, form.startDate, form.endDate, form.budget]);
 
+  const canCreate =
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'ADMIN_ENTREPRISE' ||
+    user?.role === 'CHEF_PROJET' ||
+    user?.role === 'COMPTABLE';
+
   const onChange = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const onSubmit = async () => {
+    if (!canCreate) {
+      setError("Vous n'êtes pas habilité à créer un chantier.");
+      return;
+    }
     if (!form.name.trim()) {
       setError('Le nom du chantier est obligatoire.');
       return;
@@ -56,7 +68,7 @@ export default function ProjectCreateWizard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Nouveau chantier</h1>
-          <p className="text-slate-600 mt-0.5">Creation rapide (nom, localisation, dates, budget).</p>
+          <p className="text-slate-600 mt-0.5">Création rapide (nom, localisation, dates, budget).</p>
         </div>
         <Link href="/projects" className="text-sm font-medium text-slate-600 hover:text-slate-800">Retour aux chantiers</Link>
       </div>
@@ -130,11 +142,11 @@ export default function ProjectCreateWizard() {
           <button
             type="button"
             onClick={onSubmit}
-            disabled={submitting}
+            disabled={submitting || !canCreate}
             className="px-4 py-2 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-700 text-sm inline-flex items-center gap-2 disabled:opacity-60"
           >
             <Building2 size={16} />
-            {submitting ? 'Creation...' : 'Creer le chantier'}
+            {submitting ? 'Création...' : 'Créer le chantier'}
           </button>
         </div>
       </div>

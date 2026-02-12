@@ -30,6 +30,11 @@ class ProjectsService {
     const response = await apiClient.patch<Project>(`/projects/${id}`, data);
     return response.data;
   }
+
+  async updateProjectStatus(id: string, status: Project["status"]): Promise<Project> {
+    const response = await apiClient.patch<Project>(`/projects/${id}/status`, { status });
+    return response.data;
+  }
 }
 
 export const projectsService = new ProjectsService();

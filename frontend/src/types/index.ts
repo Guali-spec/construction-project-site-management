@@ -31,6 +31,7 @@ export interface Project {
   endDate?: string | null;
   status: "PLANNED" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED";
   budget?: number | null;
+  progress?: number | null;
   createdAt: string;
   updatedAt?: string;
 }
@@ -60,6 +61,15 @@ export interface WorkerItem {
   trade?: string | null;
   phone?: string | null;
   dailyRate?: number | null;
+}
+
+export interface AttendanceItem {
+  id: string;
+  projectId: string;
+  workerId: string;
+  date: string;
+  present?: boolean | null;
+  notes?: string | null;
 }
 
 export interface PhaseItem {

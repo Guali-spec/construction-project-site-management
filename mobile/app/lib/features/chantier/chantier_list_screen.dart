@@ -1,11 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/chantier/presentation/providers/chantier_controller.dart';
+import 'package:app/ui/app_scaffold.dart';
+import 'package:app/ui/app_theme.dart';
+import 'package:app/ui/empty_state.dart';
+import 'package:app/features/auth/presentation/providers/auth_controller.dart';
 import 'widgets/chantier_card.dart';
-import '../taches/tache_list_screen.dart';
-import '../workers/presentation/screens/workers_screen.dart';
-import '../attendances/presentation/screens/attendances_screen.dart';
-import '../photos/presentation/screens/photos_screen.dart';
+import 'chantier_details_screen.dart';
+import 'package:app/features/chantier/domain/models/chantier.dart';
 
 class ChantierListScreen extends ConsumerStatefulWidget {
   const ChantierListScreen({super.key});
@@ -15,6 +17,14 @@ class ChantierListScreen extends ConsumerStatefulWidget {
 }
 
 class _ChantierListScreenState extends ConsumerState<ChantierListScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -24,9 +34,13 @@ class _ChantierListScreenState extends ConsumerState<ChantierListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(chantierControllerProvider);
+    final auth = ref.watch(authControllerProvider);
+    final role = auth.user?.role ?? 'PENDING';
+    final canCreate = role == 'SUPER_ADMIN' || role == 'ADMIN_ENTREPRISE' || role == 'CHEF_PROJET';
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Chantiers')),
+    return AppScaffold(
+      title: 'Chantiers',
+      currentRoute: '/chantiers',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Builder(
@@ -35,75 +49,108 @@ class _ChantierListScreenState extends ConsumerState<ChantierListScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (state.status == ChantierStatus.error) {
-              return Center(child: Text(state.error ?? 'Erreur'));
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 32, color: Colors.orange),
+                    const SizedBox(height: 8),
+                    Text(state.error ?? 'Erreur de chargement'),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () => ref.read(chantierControllerProvider.notifier).load(),
+                      child: const Text('Réessayer'),
+                    ),
+                  ],
+                ),
+              );
             }
             if (state.items.isEmpty) {
-              return const Center(child: Text('Aucun chantier'));
+              return const EmptyState(
+                title: 'Aucun chantier',
+                message: 'Aucun chantier disponible pour le moment.',
+              );
             }
 
-            return ListView.builder(
-              itemCount: state.items.length,
-              itemBuilder: (context, index) {
-                final chantier = state.items[index];
-                return ChantierCard(
-                  chantier: chantier,
-                  onTasks: () => _openTasks(context, chantier.id, chantier.name),
-                  onWorkers: () => _openWorkers(context, chantier.id, chantier.name),
-                  onAttendances: () => _openAttendances(context, chantier.id, chantier.name),
-                  onPhotos: () => _openPhotos(context, chantier.id, chantier.name),
-                );
-              },
+            final query = _searchController.text.trim().toLowerCase();
+            final filtered = query.isEmpty
+                ? state.items
+                : state.items
+                    .where((c) =>
+                        c.name.toLowerCase().contains(query) ||
+                        (c.location ?? '').toLowerCase().contains(query))
+                    .toList();
+
+            return Column(
+              children: [
+                _buildSearchRow(),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final chantier = filtered[index];
+                      return ChantierCard(
+                        chantier: chantier,
+                        onTap: () => _openDetails(context, chantier),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         ),
       ),
+      actions: [
+        if (canCreate)
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {},
+          ),
+      ],
     );
   }
 
-  void _openTasks(BuildContext context, String projectId, String projectName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TacheListScreen(
-          chantierId: projectId,
-          chantierName: projectName,
+  Widget _buildSearchRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Rechercher chantier...',
+              prefixIcon: const Icon(Icons.search),
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.accent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.filter_list, color: Colors.black),
+            onPressed: () {},
+          ),
+        ),
+      ],
     );
   }
 
-  void _openWorkers(BuildContext context, String projectId, String projectName) {
+  void _openDetails(BuildContext context, Chantier chantier) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => WorkersScreen(
-          projectId: projectId,
-          projectName: projectName,
-        ),
-      ),
-    );
-  }
-
-  void _openAttendances(BuildContext context, String projectId, String projectName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AttendancesScreen(
-          projectId: projectId,
-          projectName: projectName,
-        ),
-      ),
-    );
-  }
-
-  void _openPhotos(BuildContext context, String projectId, String projectName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PhotosScreen(
-          projectId: projectId,
-          projectName: projectName,
-        ),
+        builder: (_) => ChantierDetailsScreen(chantier: chantier),
       ),
     );
   }

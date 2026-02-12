@@ -23,8 +23,8 @@ import { CreateProgressPhotoUploadDto } from "./dto/create-progress-photo-upload
 export class PhotosController {
   constructor(private readonly photos: PhotosService) {}
 
-  @Roles("SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
-  @ProjectRoles(ProjectMemberRole.SUPERVISOR)
+  @Roles("CHEF_PROJET", "SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
   @Post("upload")
   @UseInterceptors(
     FileInterceptor("file", {
@@ -70,8 +70,8 @@ export class PhotosController {
     });
   }
 
-  @Roles("SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
-  @ProjectRoles(ProjectMemberRole.SUPERVISOR)
+  @Roles("CHEF_PROJET", "SUPERVISEUR", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
   @Post()
   @ApiCreatedResponse({ description: "Progress photo created" })
   create(@Req() req: Request, @Param("projectId") projectId: string, @Body() dto: CreateProgressPhotoDto) {
@@ -93,8 +93,8 @@ export class PhotosController {
     return this.photos.findAll(user.companyId, projectId, pagination);
   }
 
-  @Roles("CHEF_PROJET", "COMPTABLE", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
-  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER)
+  @Roles("CHEF_PROJET", "SUPERVISEUR", "COMPTABLE", "ADMIN_ENTREPRISE", "SUPER_ADMIN")
+  @ProjectRoles(ProjectMemberRole.OWNER, ProjectMemberRole.MANAGER, ProjectMemberRole.SUPERVISOR)
   @Delete(":id")
   @ApiOkResponse({ description: "Photo deleted (soft)" })
   remove(@Req() req: Request, @Param("projectId") projectId: string, @Param("id") id: string) {
